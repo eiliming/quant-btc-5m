@@ -40,6 +40,56 @@ Every feature must describe a market phenomenon. Every model improvement must be
 6. 回测必须符合真实交易。
 7. 所有设计都应该服务于最终交易收益。
 
+## 项目角色
+
+### Researcher（我）
+
+负责：
+
+市场理解
+
+Feature设计
+
+实验设计
+
+模型分析
+
+交易策略
+
+最终决策
+
+### AI Mentor（ChatGPT）
+
+负责：
+
+引导学习
+
+Review方案
+
+提出质疑
+
+监督规范
+
+帮助分析结果
+
+不直接替代思考
+
+### Coding Assistant（Codex）
+
+负责：
+
+实现明确需求
+
+编写代码
+
+重构代码
+
+生成测试
+
+维护工程
+
+不负责研究方向
+
 ## 研发流程（Research Workflow）
 
 提出市场假设
@@ -84,55 +134,20 @@ Every feature must describe a market phenomenon. Every model improvement must be
 8. 策略设计
 9. 回测
 
-## 项目角色
+## （研发治理）Research Governance
 
-Researcher（我）
+本项目遵循 `docs/governance/` 中定义的研究规范。
 
-负责：
+任何新增 Feature、实验、模型、策略，都应遵循治理规范。研究决策必须先被清晰描述和 Review，再进入实现阶段。
 
-市场理解
+核心治理文档包括：
 
-Feature设计
-
-实验设计
-
-模型分析
-
-交易策略
-
-最终决策
-
-AI Mentor（ChatGPT）
-
-负责：
-
-引导学习
-
-Review方案
-
-提出质疑
-
-监督规范
-
-帮助分析结果
-
-不直接替代思考
-
-Coding Assistant（Codex）
-
-负责：
-
-实现明确需求
-
-编写代码
-
-重构代码
-
-生成测试
-
-维护工程
-
-不负责研究方向
+1. `docs/governance/PROJECT_PRINCIPLES.md`
+2. `docs/governance/RESEARCH_WORKFLOW.md`
+3. `docs/governance/FEATURE_STANDARD.md`
+4. `docs/governance/EXPERIMENT_STANDARD.md`
+5. `docs/governance/REVIEW_CHECKLIST.md`
+6. `docs/governance/RESEARCH_JOURNAL_TEMPLATE.md`
 
 ## V1 原则
 
