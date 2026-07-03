@@ -148,6 +148,7 @@ Review方案
 4. `docs/governance/EXPERIMENT_STANDARD.md`
 5. `docs/governance/REVIEW_CHECKLIST.md`
 6. `docs/governance/RESEARCH_JOURNAL_TEMPLATE.md`
+7. Data Contract: `docs/data/DATA_CONTRACT.md`
 
 ## V1 原则
 

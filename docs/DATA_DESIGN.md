@@ -12,6 +12,10 @@ V1 只使用 OHLCV。
 
 暂不引入订单簿、资金费率、持仓量、链上数据。
 
+详细 Data Contract 见：
+
+`docs/data/DATA_CONTRACT.md`
+
 ## 数据质量检查
 
 必须检查以下问题：
