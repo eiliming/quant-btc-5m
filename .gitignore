@@ -7,6 +7,7 @@ data/processed/*
 data/features/*
 data/labels/*
 data/qa_reports/*
+data/research/*
 reports/*
 models/*
 .DS_Store
