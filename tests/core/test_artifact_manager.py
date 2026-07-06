@@ -19,13 +19,13 @@ class ArtifactManagerTests(unittest.TestCase):
                 artifact_type="research_dataset",
                 builder="test",
                 version="v1",
-                inputs={"raw": "x"},
+                inputs=[{"artifact_id": "raw_x", "artifact_type": "raw_kline_partition"}],
                 config={"symbol": "BTCUSDT"},
                 stats={"row_count": 1},
             )
             artifact_root = Path(temp_dir) / "research" / "datasets" / "example"
 
-            manager.write_parquet_artifact(artifact_root, pd.DataFrame([{"x": 1}]), metadata)
+            manager.write(artifact_root, pd.DataFrame([{"x": 1}]), metadata)
 
             self.assertTrue((artifact_root / "data.parquet").is_file())
             payload = json.loads((artifact_root / "metadata.json").read_text(encoding="utf-8"))
@@ -33,8 +33,9 @@ class ArtifactManagerTests(unittest.TestCase):
                 set(payload.keys()),
                 {"artifact_id", "artifact_type", "created_at", "inputs", "provenance", "config", "stats"},
             )
+            self.assertEqual(payload["inputs"], [{"artifact_id": "raw_x", "artifact_type": "raw_kline_partition"}])
             with self.assertRaises(FileExistsError):
-                manager.write_parquet_artifact(artifact_root, pd.DataFrame([{"x": 2}]), metadata)
+                manager.write(artifact_root, pd.DataFrame([{"x": 2}]), metadata)
 
 
 if __name__ == "__main__":

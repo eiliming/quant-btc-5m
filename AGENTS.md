@@ -138,7 +138,7 @@ Precision、LogLoss、AUC 等模型指标只能作为中间证据。
 
 - `artifact_id`
 - `artifact_type`
-- 输入来源（`inputs`）
+- 输入 Artifact 引用（`inputs`）
 - 生成方式（`provenance`）
 - 配置（`config`）
 - 时间戳（`created_at`）
@@ -159,7 +159,12 @@ artifact_root/
   "artifact_id": "...",
   "artifact_type": "...",
   "created_at": "...",
-  "inputs": {},
+  "inputs": [
+    {
+      "artifact_id": "...",
+      "artifact_type": "..."
+    }
+  ],
   "provenance": {
     "builder": "...",
     "version": "...",
@@ -170,13 +175,31 @@ artifact_root/
 }
 ```
 
+`artifact_id` 标准结构：
+
+```text
+{artifact_type}_{artifact_identity}_{run_id}
+```
+
+- `artifact_identity`：由 artifact type、输入 Artifact 引用和核心配置计算得到，必须可复现。
+- `run_id`：单次执行 ID，必须唯一，用于支持同一身份的重复运行。
+
 强制规则：
 
 - 所有结果必须落盘
 - 所有结果必须版本化
 - 所有 Artifact 必须包含 `metadata.json`
+- `inputs` 必须是 Artifact 引用列表，禁止使用字符串路径或非结构化 dict 作为正式依赖
 - 禁止覆盖已有 Artifact
 - 禁止使用 `latest` / `final` / `temp` / `tmp` 文件名表达正式结果
+
+标准依赖模型：
+
+```text
+artifact -> inputs -> upstream artifacts
+```
+
+Registry 是 Artifact System of Record，必须支持依赖索引、上游查询、下游查询、lineage tracing 和 impact analysis。
 
 ## 5. 特征生成规范（Feature Rules）
 

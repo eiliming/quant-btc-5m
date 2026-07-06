@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Protocol
 
 import pandas as pd
 
-from src.core.artifact.artifact_io import DATA_FILE_NAME
-from src.core.artifact.artifact_manager import ArtifactManager, current_git_commit
+from src.core.artifact.artifact_manager import ArtifactManager
+from src.core.artifact.raw_artifact import find_completed_raw_artifact
 from src.ingestion.downloader.binance_spot import BinanceSpotKlineClient, DATA_CONTRACT_COLUMNS
 from src.ingestion.downloader.models import DownloadPartitionResult, DownloadProgress, DownloadResult
 from src.ingestion.downloader.utils import (
@@ -17,11 +16,8 @@ from src.ingestion.downloader.utils import (
     format_utc_z,
     is_month_boundary,
     iter_monthly_partitions,
-    metadata_status,
     parse_utc_time,
     partition_label,
-    partition_path,
-    write_json,
 )
 
 
@@ -30,7 +26,6 @@ SUPPORTED_SYMBOLS = ("BTCUSDT", "ETHUSDT")
 SUPPORTED_TIMEFRAMES = ("1m", "5m", "15m", "30m", "1h", "4h")
 SCHEMA_VERSION = "v1"
 DOWNLOADER_VERSION = "v1"
-STAGING_DIR_NAME = ".staging"
 
 
 class KlineClient(Protocol):
@@ -129,127 +124,100 @@ def _download_partition(
     end_time: datetime,
     force: bool,
 ) -> DownloadPartitionResult:
-    raw_partition = partition_path(data_root / "raw", exchange, symbol, timeframe, start_time)
-    staging_partition = partition_path(data_root / STAGING_DIR_NAME, exchange, symbol, timeframe, start_time)
+    manager = ArtifactManager(data_root)
     partition = partition_label(start_time)
+    existing_artifact = find_completed_raw_artifact(
+        data_root / "raw",
+        exchange,
+        symbol,
+        timeframe,
+        start_time.year,
+        start_time.month,
+    )
 
-    if _is_completed_partition_valid(raw_partition):
-        if force:
-            return DownloadPartitionResult(
-                partition=partition,
-                start_time=format_utc_z(start_time),
-                end_time=format_utc_z(end_time),
-                status="failed",
-                path=str(raw_partition),
-                error_message="refusing to overwrite immutable raw artifact",
-            )
+    if existing_artifact is not None and not force:
         return DownloadPartitionResult(
             partition=partition,
             start_time=format_utc_z(start_time),
             end_time=format_utc_z(end_time),
             status="skipped",
-            path=str(raw_partition),
+            path=str(existing_artifact.path),
         )
 
-    if staging_partition.exists():
-        shutil.rmtree(staging_partition)
-
     try:
-        staging_partition.mkdir(parents=True, exist_ok=False)
         frame = client.fetch_klines(symbol, timeframe, datetime_to_ms(start_time), datetime_to_ms(end_time))
         frame = _normalize_contract_frame(frame)
         if frame.empty:
             raise ValueError("downloaded frame is empty")
 
-        data_file = staging_partition / DATA_FILE_NAME
-        frame.to_parquet(data_file, index=False)
-
-        metadata = _completed_metadata(
+        identity_config = _raw_identity_config(
             exchange=exchange,
             symbol=symbol,
             timeframe=timeframe,
             start_time=start_time,
             end_time=end_time,
-            rows_downloaded=len(frame),
-            force=force,
         )
-        write_json(staging_partition / "metadata.json", metadata)
-
-        if not data_file.exists() or data_file.stat().st_size == 0:
-            raise OSError(f"staging {DATA_FILE_NAME} was not written")
-
-        raw_partition.parent.mkdir(parents=True, exist_ok=True)
-        _replace_raw_partition(staging_partition, raw_partition)
+        artifact_id = manager.generate_artifact_id(
+            "raw_kline_partition",
+            inputs=[],
+            config=identity_config,
+        )
+        artifact_root = manager.root_for("raw_kline_partition", exchange, symbol, timeframe, artifact_id=artifact_id)
+        metadata = manager.build_metadata(
+            artifact_id=artifact_id,
+            artifact_type="raw_kline_partition",
+            builder="src.ingestion.downloader.download_klines",
+            version=DOWNLOADER_VERSION,
+            inputs=[],
+            config={
+                **identity_config,
+                "partition": partition,
+                "force": force,
+                "data_file": "data.parquet",
+            },
+            stats={
+                "status": "completed",
+                "rows_downloaded": len(frame),
+                "row_count": len(frame),
+            },
+        )
+        manager.write(artifact_root, frame, metadata)
 
         return DownloadPartitionResult(
             partition=partition,
             start_time=format_utc_z(start_time),
             end_time=format_utc_z(end_time),
             status="downloaded",
-            path=str(raw_partition),
+            path=str(artifact_root),
             rows_downloaded=len(frame),
         )
     except Exception as exc:
-        shutil.rmtree(staging_partition, ignore_errors=True)
         return DownloadPartitionResult(
             partition=partition,
             start_time=format_utc_z(start_time),
             end_time=format_utc_z(end_time),
             status="failed",
-            path=str(raw_partition),
+            path=str(manager.root_for("raw_kline_partition", exchange, symbol, timeframe)),
             error_message=str(exc),
         )
 
 
-def _completed_metadata(
+def _raw_identity_config(
     *,
     exchange: str,
     symbol: str,
     timeframe: str,
     start_time: datetime,
     end_time: datetime,
-    rows_downloaded: int,
-    force: bool,
 ) -> dict[str, object]:
     return {
-        "artifact_id": ArtifactManager().generate_artifact_id(
-            "raw_kline_partition",
-            inputs={
-                "source": "binance_spot_klines_api",
-                "exchange": exchange,
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "start_time": format_utc_z(start_time),
-                "end_time": format_utc_z(end_time),
-            },
-            config={"force": force},
-            stats={"row_count": rows_downloaded},
-        ),
-        "artifact_type": "raw_kline_partition",
-        "created_at": format_utc_z(datetime.now(UTC)),
-        "inputs": {
-            "source": "binance_spot_klines_api",
-            "start_time": format_utc_z(start_time),
-            "end_time": format_utc_z(end_time),
-        },
-        "provenance": {
-            "builder": "src.ingestion.downloader.download_klines",
-            "version": DOWNLOADER_VERSION,
-            "git_commit": current_git_commit(),
-        },
-        "config": {
-            "exchange": exchange,
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "partition": partition_label(start_time),
-            "force": force,
-            "schema_version": SCHEMA_VERSION,
-            "data_file": DATA_FILE_NAME,
-        },
-        "stats": {
-            "status": "completed",
-            "rows_downloaded": rows_downloaded,
-        },
+        "source": "binance_spot_klines_api",
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "start_time": format_utc_z(start_time),
+        "end_time": format_utc_z(end_time),
+        "schema_version": SCHEMA_VERSION,
     }
 
 
@@ -305,33 +273,3 @@ def _emit_progress(
     if progress_callback is not None:
         progress_callback(progress)
 
-
-def _is_completed_partition_valid(raw_partition: Path) -> bool:
-    data_file = raw_partition / DATA_FILE_NAME
-    return (
-        metadata_status(raw_partition) == "completed"
-        and data_file.exists()
-        and data_file.is_file()
-        and data_file.stat().st_size > 0
-    )
-
-
-def _replace_raw_partition(staging_partition: Path, raw_partition: Path) -> None:
-    if not raw_partition.exists():
-        staging_partition.rename(raw_partition)
-        return
-
-    backup_partition = raw_partition.with_name(f".{raw_partition.name}.replace_backup")
-    if backup_partition.exists():
-        shutil.rmtree(backup_partition)
-
-    raw_partition.rename(backup_partition)
-    try:
-        staging_partition.rename(raw_partition)
-    except Exception:
-        if raw_partition.exists():
-            shutil.rmtree(raw_partition, ignore_errors=True)
-        backup_partition.rename(raw_partition)
-        raise
-    else:
-        shutil.rmtree(backup_partition)

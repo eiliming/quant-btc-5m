@@ -37,13 +37,47 @@ artifacts/
 
 Artifact 的文件模型由数据文件和 metadata 文件组成。
 
-数据文件保存可计算内容，metadata 文件保存上下文信息，例如输入来源、配置、生成过程和统计摘要。
+数据文件保存可计算内容，metadata 文件保存上下文信息，例如输入 Artifact 引用、配置、生成过程和统计摘要。
 
 对于会重复生成的产物，目录通常先按业务身份分组，再以 `artifact_id` 作为具体版本目录：
 
 ```text
+artifacts/raw/{exchange}/{symbol}/{timeframe}/{artifact_id}/
 artifacts/research/datasets/{exchange}/{symbol}/{timeframe}/{artifact_id}/
 artifacts/qa/reports/{exchange}/{symbol}/{timeframe}/YYYY/MM/{artifact_id}/
 ```
+
+Raw 层也必须 artifact 化，不能直接写入 `YYYY/MM/data.parquet` 作为正式结果。年月分区信息保存在 metadata 的 `config.partition`、`config.start_time` 和 `config.end_time` 中。
+
+所有正式 Artifact 都必须包含：
+
+```text
+data.parquet
+metadata.json
+```
+
+`metadata.inputs` 只允许保存 Artifact 引用列表：
+
+```json
+[
+  {
+    "artifact_id": "raw_kline_partition_...",
+    "artifact_type": "raw_kline_partition"
+  }
+]
+```
+
+路径、交易所、symbol、timeframe、时间范围等运行上下文必须进入 `config` 或 `stats`，不能作为 dependency 写入 `inputs`。
+
+## Artifact Identity
+
+`artifact_id` 由稳定身份和唯一执行 ID 组成：
+
+```text
+{artifact_type}_{artifact_identity}_{run_id}
+```
+
+- `artifact_identity` 由 artifact type、输入 Artifact 引用和核心配置计算，用于 deterministic lineage。
+- `run_id` 标识一次具体执行，用于支持重复运行和实验对比。
 
 详细数据结构说明见 `docs/data/DATA_CONTRACT.md`。

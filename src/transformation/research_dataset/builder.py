@@ -9,7 +9,7 @@ import pandas as pd
 from src.core.artifact.artifact_io import DATA_FILE_NAME
 from src.core.artifact.artifact_manager import ArtifactManager
 from src.core.artifact.artifact_io import read_json
-from src.core.artifact.raw_artifact import discover_raw_partitions
+from src.core.artifact.raw_artifact import discover_raw_artifacts
 from src.core.time import format_utc_z, ms_to_datetime
 from src.transformation.research_dataset.models import DatasetMetadata
 from src.transformation.research_dataset.schema import (
@@ -34,22 +34,24 @@ def build_dataset(
     qa_report_root = Path(qa_report_root)
     output_root = Path(output_root)
 
-    partitions = [
-        (int(year), int(month))
-        for discovered_exchange, discovered_symbol, discovered_timeframe, year, month in discover_raw_partitions(raw_root)
-        if discovered_exchange == exchange and discovered_symbol == symbol and discovered_timeframe == timeframe
+    raw_artifacts = [
+        artifact
+        for artifact in discover_raw_artifacts(raw_root)
+        if artifact.exchange == exchange and artifact.symbol == symbol and artifact.timeframe == timeframe
     ]
-    if not partitions:
+    if not raw_artifacts:
         raise ValueError(f"no raw partitions found for {exchange}/{symbol}/{timeframe} under {raw_root}")
 
     frames: list[pd.DataFrame] = []
     source_partitions: list[str] = []
-    for year, month in sorted(partitions):
-        partition_label = f"{year:04d}/{month:02d}"
-        raw_partition = raw_root / exchange / symbol / timeframe / f"{year:04d}" / f"{month:02d}"
-        _require_passed_qa(qa_report_root, exchange, symbol, timeframe, year, month)
-        frames.append(_read_raw_partition(raw_partition, partition_label))
+    input_refs: list[dict[str, str]] = []
+    for raw_artifact in sorted(raw_artifacts, key=lambda artifact: (artifact.year, artifact.month, artifact.artifact_id)):
+        partition_label = raw_artifact.partition_label
+        qa_ref = _require_passed_qa(qa_report_root, exchange, symbol, timeframe, raw_artifact.year, raw_artifact.month)
+        frames.append(_read_raw_partition(raw_artifact.path, partition_label))
         source_partitions.append(partition_label)
+        input_refs.append(raw_artifact.to_reference())
+        input_refs.append(qa_ref)
 
     dataset = pd.concat(frames, ignore_index=True)
     dataset = normalize_research_frame(dataset)
@@ -59,17 +61,15 @@ def build_dataset(
     manager = ArtifactManager(output_root)
     artifact_id = manager.generate_artifact_id(
         "research_dataset",
-        inputs={
-            "source_root": str(raw_root),
-            "qa_report_root": str(qa_report_root),
-            "source_partitions": source_partitions,
-        },
+        inputs=input_refs,
         config={
             "exchange": exchange,
             "symbol": symbol,
             "timeframe": timeframe,
             "schema_version": SCHEMA_VERSION,
             "dataset_version": DATASET_VERSION,
+            "source_root": str(raw_root),
+            "qa_report_root": str(qa_report_root),
         },
         stats={
             "start_timestamp": int(dataset["timestamp"].iloc[0]),
@@ -84,17 +84,15 @@ def build_dataset(
         artifact_type="research_dataset",
         builder="src.transformation.research_dataset.build_dataset",
         version=DATASET_VERSION,
-        inputs={
-            "source_root": str(raw_root),
-            "qa_report_root": str(qa_report_root),
-            "source_partitions": source_partitions,
-        },
+        inputs=input_refs,
         config={
             "exchange": exchange,
             "symbol": symbol,
             "timeframe": timeframe,
             "schema_version": SCHEMA_VERSION,
             "dataset_version": DATASET_VERSION,
+            "source_root": str(raw_root),
+            "qa_report_root": str(qa_report_root),
         },
         stats={
             "start_timestamp": int(dataset["timestamp"].iloc[0]),
@@ -102,6 +100,7 @@ def build_dataset(
             "start_time_utc": _format_timestamp_ms(int(dataset["timestamp"].iloc[0])),
             "end_time_utc": _format_timestamp_ms(int(dataset["timestamp"].iloc[-1])),
             "row_count": len(dataset),
+            "source_partitions": source_partitions,
         },
     )
 
@@ -121,10 +120,11 @@ def build_dataset(
         source_root=str(raw_root),
         qa_report_root=str(qa_report_root),
         source_partitions=source_partitions,
+        input_artifacts=input_refs,
         created_at=artifact_metadata.created_at,
         provenance=artifact_metadata.provenance.to_dict(),
     )
-    manager.write_parquet_artifact(artifact_root, dataset, artifact_metadata)
+    manager.write(artifact_root, dataset, artifact_metadata)
 
     written = pd.read_parquet(target_dataset)
     validate_research_frame(written, timeframe)
@@ -143,7 +143,7 @@ def _require_passed_qa(
     timeframe: str,
     year: int,
     month: int,
-) -> None:
+) -> dict[str, str]:
     report_path = _qa_report_metadata_path(qa_report_root, exchange, symbol, timeframe, year, month)
     report = read_json(report_path)
     if report is None:
@@ -152,6 +152,7 @@ def _require_passed_qa(
     status = _normalize_qa_status(_extract_qa_status(report))
     if status != "PASS":
         raise ValueError(f"QA status must be PASS for partition {year:04d}/{month:02d}; found {status}")
+    return {"artifact_id": str(report["artifact_id"]), "artifact_type": str(report["artifact_type"])}
 
 
 def _extract_qa_status(report: dict[str, Any]) -> Any:

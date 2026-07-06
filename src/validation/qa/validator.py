@@ -11,7 +11,7 @@ from pandas.api.types import is_bool_dtype, is_integer_dtype, is_numeric_dtype
 
 from src.core.artifact.artifact_io import DATA_FILE_NAME
 from src.core.artifact.artifact_manager import ArtifactManager
-from src.core.artifact.raw_artifact import discover_raw_partitions
+from src.core.artifact.raw_artifact import discover_raw_partitions, find_raw_artifact
 from src.core.market_data import INTERVAL_MS, RAW_KLINE_COLUMNS
 from src.core.time import datetime_to_ms, format_utc_z, ms_to_datetime
 from src.validation.qa.models import PartitionSpec, QaStatus, RuleDefinition, RuleResult
@@ -50,7 +50,12 @@ def validate_partition(
 ) -> dict[str, Any]:
     raw_root_path = Path(raw_root)
     report_root_path = Path(report_root)
-    partition_dir = raw_root_path / exchange / symbol / timeframe / f"{year:04d}" / f"{month:02d}"
+    raw_artifact = find_raw_artifact(raw_root_path, exchange, symbol, timeframe, year, month)
+    partition_dir = (
+        raw_artifact.path
+        if raw_artifact is not None
+        else raw_root_path / exchange / symbol / timeframe / f"{year:04d}" / f"{month:02d}"
+    )
     spec = PartitionSpec(
         exchange=exchange,
         symbol=symbol,
@@ -72,6 +77,7 @@ def validate_partition(
         "summary": _partition_summary(results),
         "data_summary": _data_summary(frame),
         "rules": [result.to_dict() for result in results],
+        "inputs": [raw_artifact.to_reference()] if raw_artifact is not None else [],
     }
 
     report_path = (
@@ -119,6 +125,8 @@ def run_all(
                 "warning_count": report["summary"]["warning_count"],
                 "row_count": report["data_summary"]["row_count"],
                 "report_path": str(report["metadata_path"]),
+                "artifact_id": str(Path(report["artifact_path"]).name),
+                "artifact_type": "qa_report",
             }
         )
 
@@ -555,9 +563,10 @@ def _write_partition_report_artifact(report_path: Path, report: dict[str, Any]) 
     for column in ("expected", "actual"):
         if column in rules.columns:
             rules[column] = rules[column].map(lambda value: json.dumps(value, sort_keys=True, default=str))
+    inputs = list(report.get("inputs", []))
     artifact_id = manager.generate_artifact_id(
         "qa_report",
-        inputs={"partition": report["partition"]},
+        inputs=inputs,
         config={"schema_version": SCHEMA_VERSION},
         stats={"status": report["status"], **report["summary"]},
     )
@@ -566,8 +575,8 @@ def _write_partition_report_artifact(report_path: Path, report: dict[str, Any]) 
         artifact_type="qa_report",
         builder="src.validation.qa.validate_partition",
         version=SCHEMA_VERSION,
-        inputs={"partition": report["partition"]},
-        config={"report_type": REPORT_TYPE_PARTITION, "schema_version": SCHEMA_VERSION},
+        inputs=inputs,
+        config={"report_type": REPORT_TYPE_PARTITION, "schema_version": SCHEMA_VERSION, "partition": report["partition"]},
         stats={
             "status": report["status"],
             "summary": report["summary"],
@@ -575,15 +584,20 @@ def _write_partition_report_artifact(report_path: Path, report: dict[str, Any]) 
         },
     )
     artifact_root = report_path / artifact_id
-    return manager.write_parquet_artifact(artifact_root, rules, metadata)
+    return manager.write(artifact_root, rules, metadata)
 
 
 def _write_summary_artifact(summary_path: Path, summary: dict[str, Any]) -> None:
     manager = ArtifactManager()
     partitions = pd.DataFrame(summary["partitions"])
+    inputs = [
+        {"artifact_id": str(partition["artifact_id"]), "artifact_type": str(partition["artifact_type"])}
+        for partition in summary["partitions"]
+        if "artifact_id" in partition and "artifact_type" in partition
+    ]
     artifact_id = manager.generate_artifact_id(
         "qa_summary",
-        inputs={"root_path": summary["root_path"]},
+        inputs=inputs,
         config={"schema_version": SCHEMA_VERSION},
         stats={"status": summary["status"], **summary["summary"]},
     )
@@ -592,14 +606,14 @@ def _write_summary_artifact(summary_path: Path, summary: dict[str, Any]) -> None
         artifact_type="qa_summary",
         builder="src.validation.qa.run_all",
         version=SCHEMA_VERSION,
-        inputs={"root_path": summary["root_path"]},
-        config={"report_type": REPORT_TYPE_SUMMARY, "schema_version": SCHEMA_VERSION},
+        inputs=inputs,
+        config={"report_type": REPORT_TYPE_SUMMARY, "schema_version": SCHEMA_VERSION, "root_path": summary["root_path"]},
         stats={
             "status": summary["status"],
             "summary": summary["summary"],
         },
     )
-    manager.write_parquet_artifact(summary_path / artifact_id, partitions, metadata)
+    manager.write(summary_path / artifact_id, partitions, metadata)
 
 
 def _expected_dtypes() -> dict[str, str]:

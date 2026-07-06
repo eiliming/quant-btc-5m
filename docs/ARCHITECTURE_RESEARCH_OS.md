@@ -20,9 +20,50 @@ Artifact 是一次计算或研究步骤的持久化结果。
   metadata.json
 ```
 
-`data.parquet` 保存结构化数据，`metadata.json` 描述身份、输入、生成过程、配置和统计信息。
+`data.parquet` 保存结构化数据，`metadata.json` 描述身份、输入 Artifact、生成过程、配置和统计信息。
 
 对于可重复生成的研究产物，`artifact_root` 通常是带 `artifact_id` 的版本目录。
+
+`artifact_id` 分为两层语义：
+
+```text
+{artifact_type}_{artifact_identity}_{run_id}
+```
+
+- `artifact_identity` 由 artifact type、输入 Artifact 引用和核心配置计算，表达可复现身份。
+- `run_id` 表达一次唯一执行，允许同一 identity 重复运行并生成新版本。
+
+`metadata.inputs` 是 Artifact dependency list，结构如下：
+
+```json
+[
+  {
+    "artifact_id": "...",
+    "artifact_type": "..."
+  }
+]
+```
+
+路径、时间范围、交易对和 schema version 属于 `config` 或 `stats`，不能作为依赖写入 `inputs`。
+
+## Artifact DAG
+
+Artifact System 使用 DAG 表示全链路依赖：
+
+```text
+raw artifact -> QA report artifact -> QA summary artifact
+raw artifact + QA report artifact -> research dataset artifact
+research dataset artifact -> feature/label/split/experiment artifacts
+```
+
+Registry 是 Artifact System of Record，负责维护：
+
+- dependency index
+- reverse dependency index
+- upstream lookup
+- downstream lookup
+- lineage tracing
+- impact analysis
 
 ## Pipeline Lifecycle
 
@@ -39,6 +80,19 @@ Dataset -> Feature -> Label -> Split -> Experiment -> Evaluation
 3. `build-research`: research dataset artifact
 
 后续阶段可在同一 Artifact 模型下继续扩展。
+
+当前数据流边界：
+
+```text
+Exchange API
+  -> Downloader
+  -> Raw Artifact
+  -> QA Artifact
+  -> Research Dataset Artifact
+  -> Loader
+```
+
+Loader 只读取 research dataset artifact。QA 不访问交易所 API，Dataset Builder 不绕过 QA，后续 Feature / Label / Experiment 不应直接读取 raw artifact。
 
 ## Builder vs Artifact
 

@@ -29,13 +29,6 @@ def read_json(path: Path) -> dict[str, Any] | None:
         return json.load(file)
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(payload, file, indent=2, sort_keys=True)
-        file.write("\n")
-
-
 def metadata_status(partition_dir: Path) -> str | None:
     metadata = read_json(partition_dir / "metadata.json")
     if metadata is None:

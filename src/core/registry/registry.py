@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from src.core.artifact.artifact_io import read_json, write_json_immutable
+from src.core.registry.artifact_graph import ArtifactGraph
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class ArtifactRegistry:
     def __init__(self, registry_path: str | Path | None = None) -> None:
         self.registry_path = Path(registry_path) if registry_path is not None else None
         self._records: dict[str, RegistryRecord] = {}
+        self._graph = ArtifactGraph()
         if self.registry_path is not None:
             payload = read_json(self.registry_path)
             if payload is not None:
@@ -38,6 +40,7 @@ class ArtifactRegistry:
                         metadata=dict(item["metadata"]),
                     )
                     self._records[record.artifact_id] = record
+                    self._graph.add_artifact(record.artifact_id, _metadata_inputs(record.metadata))
 
     def register(self, *, artifact_id: str, artifact_type: str, path: Path, metadata: dict[str, Any]) -> RegistryRecord:
         if artifact_id in self._records:
@@ -49,6 +52,7 @@ class ArtifactRegistry:
             metadata=metadata,
         )
         self._records[artifact_id] = record
+        self._graph.add_artifact(artifact_id, _metadata_inputs(metadata))
         return record
 
     def get(self, artifact_id: str) -> RegistryRecord:
@@ -66,8 +70,42 @@ class ArtifactRegistry:
     def save(self) -> None:
         if self.registry_path is None:
             return
-        payload = {"records": [record.to_dict() for record in self.list()]}
+        payload = {
+            "records": [record.to_dict() for record in self.list()],
+            "dependency_index": self.dependency_index(),
+            "reverse_dependency_index": self.reverse_dependency_index(),
+        }
         write_json_immutable(self.registry_path, payload)
+
+    def dependency_index(self) -> dict[str, list[str]]:
+        return self._graph.dependency_index()
+
+    def reverse_dependency_index(self) -> dict[str, list[str]]:
+        return self._graph.reverse_dependency_index()
+
+    def get_upstream_artifacts(self, artifact_id: str) -> list[RegistryRecord]:
+        return [self.get(dependency_id) for dependency_id in self._graph.get_upstream_artifacts(artifact_id)]
+
+    def get_downstream_artifacts(self, artifact_id: str) -> list[RegistryRecord]:
+        return [self.get(dependent_id) for dependent_id in self._graph.get_downstream_artifacts(artifact_id)]
+
+    def trace_lineage(self, artifact_id: str) -> list[RegistryRecord]:
+        return [self.get(dependency_id) for dependency_id in self._graph.trace_upstream(artifact_id)]
+
+    def trace_impact(self, artifact_id: str) -> list[RegistryRecord]:
+        return [self.get(dependent_id) for dependent_id in self._graph.trace_downstream(artifact_id)]
+
+
+def _metadata_inputs(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    inputs = metadata.get("inputs", [])
+    if inputs is None:
+        return []
+    if not isinstance(inputs, list):
+        raise ValueError("registry metadata inputs must be a list of artifact references")
+    for item in inputs:
+        if not isinstance(item, dict) or "artifact_id" not in item or "artifact_type" not in item:
+            raise ValueError("registry metadata inputs must contain artifact_id and artifact_type")
+    return inputs
 
 
 class DatasetRegistry(ArtifactRegistry):

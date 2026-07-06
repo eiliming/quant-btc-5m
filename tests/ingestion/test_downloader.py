@@ -13,7 +13,7 @@ from src.ingestion.downloader.binance_spot import DATA_CONTRACT_COLUMNS, convert
 from src.ingestion.downloader.cli import main as cli_main
 from src.ingestion.downloader.downloader import download_klines
 from src.ingestion.downloader.models import DownloadPartitionResult, DownloadProgress, DownloadResult
-from src.ingestion.downloader.utils import iter_monthly_partitions, parse_utc_time, write_json
+from src.ingestion.downloader.utils import iter_monthly_partitions, parse_utc_time
 
 
 class FakeClient:
@@ -35,6 +35,11 @@ class FailingClient:
         raise RuntimeError("network failure")
 
 
+def write_json(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def contract_frame(timestamp: int = 1704067200000) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -54,13 +59,12 @@ def contract_frame(timestamp: int = 1704067200000) -> pd.DataFrame:
 
 def raw_partition(
     root: Path,
-    year: str = "2024",
-    month: str = "01",
+    artifact_id: str = "raw_test_partition",
     *,
     symbol: str = "BTCUSDT",
     timeframe: str = "5m",
 ) -> Path:
-    return root / "raw" / "binance_spot" / symbol / timeframe / year / month
+    return root / "raw" / "binance_spot" / symbol / timeframe / artifact_id
 
 
 def write_completed_partition(partition_dir: Path, frame: pd.DataFrame | None = None) -> None:
@@ -73,9 +77,16 @@ def write_completed_partition(partition_dir: Path, frame: pd.DataFrame | None = 
             "artifact_id": "raw_test_partition",
             "artifact_type": "raw_kline_partition",
             "created_at": "2024-01-01T00:00:00Z",
-            "inputs": {},
+            "inputs": [],
             "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
-            "config": {"exchange": "binance_spot", "symbol": "BTCUSDT", "timeframe": "5m"},
+            "config": {
+                "exchange": "binance_spot",
+                "symbol": "BTCUSDT",
+                "timeframe": "5m",
+                "partition": "2024/01",
+                "start_time": "2024-01-01T00:00:00Z",
+                "end_time": "2024-02-01T00:00:00Z",
+            },
             "stats": {"status": "completed", "row_count": len(active_frame)},
         },
     )
@@ -136,7 +147,7 @@ class DownloaderTests(unittest.TestCase):
                 client=client,
             )
 
-            partition_dir = raw_partition(data_root, symbol="ETHUSDT", timeframe="15m")
+            partition_dir = Path(result.partitions[0].path)
             self.assertEqual(result.downloaded_count, 1)
             self.assertEqual(result.symbol, "ETHUSDT")
             self.assertEqual(result.timeframe, "15m")
@@ -210,9 +221,14 @@ class DownloaderTests(unittest.TestCase):
                     "artifact_id": "raw_test_partition",
                     "artifact_type": "raw_kline_partition",
                     "created_at": "2024-01-01T00:00:00Z",
-                    "inputs": {},
+                    "inputs": [],
                     "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
-                    "config": {"exchange": "binance_spot", "symbol": "BTCUSDT", "timeframe": "5m"},
+                    "config": {
+                        "exchange": "binance_spot",
+                        "symbol": "BTCUSDT",
+                        "timeframe": "5m",
+                        "partition": "2024/01",
+                    },
                     "stats": {"status": "completed", "row_count": 0},
                 },
             )
@@ -230,9 +246,10 @@ class DownloaderTests(unittest.TestCase):
 
             self.assertEqual(result.downloaded_count, 1)
             self.assertEqual(len(client.calls), 1)
-            self.assertTrue((partition_dir / "data.parquet").is_file())
+            self.assertFalse((partition_dir / "data.parquet").exists())
+            self.assertTrue((Path(result.partitions[0].path) / "data.parquet").is_file())
 
-    def test_force_does_not_overwrite_completed_partition(self) -> None:
+    def test_force_creates_new_artifact_without_overwriting_completed_partition(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             partition_dir = raw_partition(data_root)
@@ -252,12 +269,13 @@ class DownloaderTests(unittest.TestCase):
                 client=client,
             )
 
-            self.assertEqual(result.failed_count, 1)
-            self.assertEqual(len(client.calls), 0)
+            self.assertEqual(result.downloaded_count, 1)
+            self.assertEqual(len(client.calls), 1)
             self.assertTrue(old_marker.exists())
             metadata = json.loads((partition_dir / "metadata.json").read_text(encoding="utf-8"))
             self.assertEqual(metadata["stats"]["status"], "completed")
-            self.assertEqual(result.partitions[0].error_message, "refusing to overwrite immutable raw artifact")
+            self.assertNotEqual(Path(result.partitions[0].path), partition_dir)
+            self.assertTrue((Path(result.partitions[0].path) / "data.parquet").is_file())
 
     def test_force_download_failure_preserves_existing_raw_partition(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -282,7 +300,7 @@ class DownloaderTests(unittest.TestCase):
             )
 
             self.assertEqual(result.failed_count, 1)
-            self.assertEqual(len(client.calls), 0)
+            self.assertEqual(len(client.calls), 1)
             self.assertTrue(old_marker.is_file())
             self.assertEqual((partition_dir / "metadata.json").read_text(encoding="utf-8"), original_metadata)
             preserved = pd.read_parquet(partition_dir / "data.parquet")
@@ -303,7 +321,7 @@ class DownloaderTests(unittest.TestCase):
                 client=client,
             )
 
-            partition_dir = raw_partition(data_root)
+            partition_dir = Path(result.partitions[0].path)
             staging_partition = data_root / ".staging" / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01"
             self.assertEqual(result.partitions[0].status, "downloaded")
             self.assertTrue((partition_dir / "data.parquet").is_file())

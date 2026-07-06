@@ -33,6 +33,8 @@ Dataset Artifact
 - raw data QA
 - research dataset build
 - artifact metadata
+- artifact dependency DAG
+- registry lineage lookup
 - unified CLI entry
 
 ## 目录概览

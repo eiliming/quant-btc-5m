@@ -16,6 +16,34 @@ from src.transformation.research_dataset.schema import (
 )
 
 
+def load_artifact(dataset_id: str, *, root: Path = Path("artifacts/research/datasets")) -> pd.DataFrame:
+    root = Path(root)
+    metadata_files = [path for path in root.glob(f"*/*/*/{dataset_id}/metadata.json") if (path.parent / "data.parquet").is_file()]
+    if not metadata_files:
+        raise ValueError(f"research dataset artifact not found: {dataset_id}")
+    if len(metadata_files) > 1:
+        raise ValueError(f"research dataset artifact id is ambiguous: {dataset_id}")
+
+    metadata_file = metadata_files[0]
+    metadata_payload = read_json(metadata_file)
+    if metadata_payload is None:
+        raise ValueError(f"missing research dataset metadata: {metadata_file}")
+    metadata = DatasetMetadata.from_dict(metadata_payload)
+    if metadata.artifact_type != "research_dataset":
+        raise ValueError(f"loader only accepts research_dataset artifacts; found {metadata.artifact_type}")
+    if metadata.artifact_id != dataset_id:
+        raise ValueError(
+            f"metadata artifact_id does not match requested dataset_id: {metadata.artifact_id} != {dataset_id}"
+        )
+    if metadata.schema_version != SCHEMA_VERSION:
+        raise ValueError(f"unsupported research dataset schema_version: {metadata.schema_version}")
+
+    dataset_file = metadata_file.parent / "data.parquet"
+    frame = pd.read_parquet(dataset_file)
+    validate_research_frame(frame, metadata.timeframe)
+    return frame
+
+
 def load_dataset(
     exchange: str,
     symbol: str,

@@ -23,6 +23,7 @@ class DatasetMetadata:
     source_root: str
     qa_report_root: str
     source_partitions: list[str]
+    input_artifacts: list[dict[str, str]]
     created_at: str
     provenance: dict[str, Any]
 
@@ -31,11 +32,7 @@ class DatasetMetadata:
             artifact_id=self.artifact_id,
             artifact_type=self.artifact_type,
             created_at=self.created_at,
-            inputs={
-                "source_root": self.source_root,
-                "qa_report_root": self.qa_report_root,
-                "source_partitions": self.source_partitions,
-            },
+            inputs=self.input_artifacts,
             provenance=ArtifactProvenance.from_dict(self.provenance),
             config={
                 "exchange": self.exchange,
@@ -43,6 +40,8 @@ class DatasetMetadata:
                 "timeframe": self.timeframe,
                 "schema_version": self.schema_version,
                 "dataset_version": self.dataset_version,
+                "source_root": self.source_root,
+                "qa_report_root": self.qa_report_root,
             },
             stats={
                 "start_timestamp": self.start_timestamp,
@@ -50,6 +49,7 @@ class DatasetMetadata:
                 "start_time_utc": self.start_time_utc,
                 "end_time_utc": self.end_time_utc,
                 "row_count": self.row_count,
+                "source_partitions": self.source_partitions,
             },
         ).to_dict()
 
@@ -57,7 +57,12 @@ class DatasetMetadata:
     def from_dict(cls, payload: dict[str, Any]) -> "DatasetMetadata":
         config = dict(payload["config"])
         stats = dict(payload["stats"])
-        inputs = dict(payload["inputs"])
+        raw_inputs = payload["inputs"]
+        legacy_inputs = raw_inputs if isinstance(raw_inputs, dict) else {}
+        input_artifacts = [
+            {"artifact_id": str(item["artifact_id"]), "artifact_type": str(item["artifact_type"])}
+            for item in raw_inputs
+        ] if isinstance(raw_inputs, list) else []
         return cls(
             artifact_id=str(payload["artifact_id"]),
             artifact_type=str(payload["artifact_type"]),
@@ -71,9 +76,13 @@ class DatasetMetadata:
             start_time_utc=str(stats["start_time_utc"]),
             end_time_utc=str(stats["end_time_utc"]),
             row_count=int(stats["row_count"]),
-            source_root=str(inputs["source_root"]),
-            qa_report_root=str(inputs["qa_report_root"]),
-            source_partitions=[str(partition) for partition in inputs["source_partitions"]],
+            source_root=str(config.get("source_root", legacy_inputs.get("source_root", ""))),
+            qa_report_root=str(config.get("qa_report_root", legacy_inputs.get("qa_report_root", ""))),
+            source_partitions=[
+                str(partition)
+                for partition in stats.get("source_partitions", legacy_inputs.get("source_partitions", []))
+            ],
+            input_artifacts=input_artifacts,
             created_at=str(payload["created_at"]),
             provenance=dict(payload["provenance"]),
         )

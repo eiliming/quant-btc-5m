@@ -18,8 +18,17 @@ Raw kline artifact 表示直接来自交易所接口的市场事实。
 路径形态：
 
 ```text
-artifacts/raw/{exchange}/{symbol}/{timeframe}/YYYY/MM/
+artifacts/raw/{exchange}/{symbol}/{timeframe}/{artifact_id}/
 ```
+
+年月分区不再作为正式 raw artifact 目录层级。分区身份保存在 `metadata.json`：
+
+- `config.partition`: `YYYY/MM`
+- `config.start_time`
+- `config.end_time`
+- `config.exchange`
+- `config.symbol`
+- `config.timeframe`
 
 `data.parquet` 字段：
 
@@ -55,7 +64,32 @@ timestamp, open, high, low, close, volume
 
 Dataset metadata 将数据身份、来源、生成方式、配置和统计摘要组织在一起。
 
-常见信息包括：
+所有 Artifact metadata 必须包含标准字段：
+
+```json
+{
+  "artifact_id": "...",
+  "artifact_type": "...",
+  "created_at": "...",
+  "inputs": [
+    {
+      "artifact_id": "...",
+      "artifact_type": "..."
+    }
+  ],
+  "provenance": {
+    "builder": "...",
+    "version": "...",
+    "git_commit": "..."
+  },
+  "config": {},
+  "stats": {}
+}
+```
+
+`inputs` 是 Artifact dependency list，只能保存上游 artifact reference，不能保存路径字符串或非结构化输入来源。路径、分区、schema version、交易对和时间范围属于 `config` 或 `stats`。
+
+常见 config/stats 信息包括：
 
 - exchange
 - symbol
@@ -64,3 +98,5 @@ Dataset metadata 将数据身份、来源、生成方式、配置和统计摘要
 - source partitions
 - time range
 - row count
+
+Research dataset artifact 的 `inputs` 至少应包含被消费的 raw kline artifact 和对应 QA report artifact，形成可追溯 DAG。

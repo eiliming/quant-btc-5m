@@ -270,8 +270,9 @@ class QaValidatorTests(unittest.TestCase):
 
     def test_discover_partitions_only_accepts_valid_directory_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            raw_root = Path(temp_dir) / "raw"
-            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01").mkdir(parents=True)
+            data_root = Path(temp_dir)
+            raw_root = data_root / "raw"
+            write_partition(data_root)
             (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "13").mkdir(parents=True)
             (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "24" / "01").mkdir(parents=True)
             (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "1").mkdir(parents=True)

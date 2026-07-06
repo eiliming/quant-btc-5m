@@ -16,6 +16,22 @@ STANDARD_METADATA_KEYS = (
 
 
 @dataclass(frozen=True)
+class ArtifactReference:
+    artifact_id: str
+    artifact_type: str
+
+    def to_dict(self) -> dict[str, str]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ArtifactReference":
+        return cls(
+            artifact_id=str(payload["artifact_id"]),
+            artifact_type=str(payload["artifact_type"]),
+        )
+
+
+@dataclass(frozen=True)
 class ArtifactProvenance:
     builder: str
     version: str
@@ -38,7 +54,7 @@ class ArtifactMetadata:
     artifact_id: str
     artifact_type: str
     created_at: str
-    inputs: dict[str, Any] = field(default_factory=dict)
+    inputs: list[ArtifactReference] = field(default_factory=list)
     provenance: ArtifactProvenance = field(
         default_factory=lambda: ArtifactProvenance(builder="unknown", version="unknown", git_commit="unknown")
     )
@@ -50,7 +66,7 @@ class ArtifactMetadata:
             "artifact_id": self.artifact_id,
             "artifact_type": self.artifact_type,
             "created_at": self.created_at,
-            "inputs": self.inputs,
+            "inputs": [_reference_to_dict(artifact) for artifact in self.inputs],
             "provenance": self.provenance.to_dict(),
             "config": self.config,
             "stats": self.stats,
@@ -64,12 +80,21 @@ class ArtifactMetadata:
         provenance = payload["provenance"]
         if not isinstance(provenance, dict):
             raise ValueError("artifact metadata provenance must be an object")
+        inputs = payload["inputs"]
+        if not isinstance(inputs, list):
+            raise ValueError("artifact metadata inputs must be a list of artifact references")
         return cls(
             artifact_id=str(payload["artifact_id"]),
             artifact_type=str(payload["artifact_type"]),
             created_at=str(payload["created_at"]),
-            inputs=dict(payload["inputs"]),
+            inputs=[ArtifactReference.from_dict(item) for item in inputs],
             provenance=ArtifactProvenance.from_dict(provenance),
             config=dict(payload["config"]),
             stats=dict(payload["stats"]),
         )
+
+
+def _reference_to_dict(reference: ArtifactReference | dict[str, Any]) -> dict[str, str]:
+    if isinstance(reference, ArtifactReference):
+        return reference.to_dict()
+    return ArtifactReference.from_dict(reference).to_dict()
