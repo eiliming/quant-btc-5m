@@ -31,6 +31,7 @@ RULES: tuple[RuleDefinition, ...] = (
     RuleDefinition("TS_004", "No Duplicate Timestamp", "time_series", "ERROR"),
     RuleDefinition("VALUE_001", "OHLC Relation Valid", "value", "ERROR"),
     RuleDefinition("VALUE_002", "Basic Value Valid", "value", "ERROR"),
+    RuleDefinition("VALUE_003", "All Candles Closed", "value", "ERROR"),
 )
 
 
@@ -165,6 +166,7 @@ def _evaluate_rules(
         _ts_004(frame, read_error),
         _value_001(frame, read_error),
         _value_002(frame, read_error),
+        _value_003(frame, read_error),
     ]
 
 
@@ -388,7 +390,7 @@ def _value_002(frame: pd.DataFrame | None, read_error: str | None) -> RuleResult
     rule = RULES[11]
     if frame is None:
         return _unreadable_result(rule, read_error)
-    required = ["open", "high", "low", "close", "volume", "is_closed"]
+    required = ["open", "high", "low", "close", "volume"]
     missing = [column for column in required if column not in frame.columns]
     if missing:
         return _result(rule, False, f"Cannot validate basic values because columns are missing: {missing}.")
@@ -397,16 +399,47 @@ def _value_002(frame: pd.DataFrame | None, read_error: str | None) -> RuleResult
     invalid_non_negative = {
         column: int((frame[column].isna() | (frame[column] < 0)).sum()) for column in numeric_columns
     }
-    invalid_is_closed = int((frame["is_closed"].isna() | (frame["is_closed"] != True)).sum())  # noqa: E712
-    passed = sum(invalid_non_negative.values()) == 0 and invalid_is_closed == 0
+    passed = sum(invalid_non_negative.values()) == 0
     return _result(
         rule,
         passed,
         "Basic values are valid."
         if passed
-        else f"Invalid non-negative counts: {invalid_non_negative}; invalid is_closed count: {invalid_is_closed}.",
-        expected={"non_negative": numeric_columns, "is_closed_all_true": True},
-        actual={"negative_or_null_counts": invalid_non_negative, "invalid_is_closed_count": invalid_is_closed},
+        else f"Invalid non-negative counts: {invalid_non_negative}.",
+        expected={"non_negative": numeric_columns},
+        actual={"negative_or_null_counts": invalid_non_negative},
+    )
+
+
+def _value_003(frame: pd.DataFrame | None, read_error: str | None) -> RuleResult:
+    rule = RULES[12]
+    if frame is None:
+        return _unreadable_result(rule, read_error)
+    if "is_closed" not in frame.columns:
+        return _result(
+            rule,
+            False,
+            "Cannot validate closed candles because is_closed column is missing.",
+            expected={"is_closed_all_true": True},
+            actual={"failed_row_count": None, "offending_timestamps": []},
+        )
+
+    closed_mask = frame["is_closed"].fillna(False) == True  # noqa: E712
+    offending = frame.loc[~closed_mask, "timestamp"] if "timestamp" in frame.columns else pd.Series(dtype="object")
+    failed_row_count = int((~closed_mask).sum())
+    offending_timestamps = [_json_scalar(value) for value in offending.head(5).tolist()]
+    passed = failed_row_count == 0
+    return _result(
+        rule,
+        passed,
+        "All candles are closed."
+        if passed
+        else f"Found {failed_row_count} unclosed candles; first offending timestamps: {offending_timestamps}.",
+        expected={"is_closed_all_true": True},
+        actual={
+            "failed_row_count": failed_row_count,
+            "offending_timestamps": offending_timestamps,
+        },
     )
 
 

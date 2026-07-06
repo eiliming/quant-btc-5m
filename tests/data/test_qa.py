@@ -95,7 +95,7 @@ class QaValidatorTests(unittest.TestCase):
 
             report_path = data_root / "qa_reports" / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01" / "qa_report.json"
             self.assertEqual(report["status"], "PASS")
-            self.assertEqual(report["summary"]["total_rules"], 12)
+            self.assertEqual(report["summary"]["total_rules"], 13)
             self.assertEqual(report["summary"]["error_count"], 0)
             self.assertEqual(report["data_summary"]["row_count"], 8928)
             self.assertEqual(report["data_summary"]["start_time_utc"], "2024-01-01T00:00:00Z")
@@ -149,6 +149,35 @@ class QaValidatorTests(unittest.TestCase):
             self.assertIn("TS_004", failed_rules)
             self.assertIn("VALUE_001", failed_rules)
             self.assertIn("VALUE_002", failed_rules)
+
+    def test_unclosed_candles_fail_explicit_rule(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_root = Path(temp_dir)
+            frame = valid_january_2024_frame()
+            offending_timestamps = [
+                int(frame.loc[3, "timestamp"]),
+                int(frame.loc[5, "timestamp"]),
+                int(frame.loc[8, "timestamp"]),
+            ]
+            frame.loc[[3, 5, 8], "is_closed"] = False
+            write_partition(data_root, frame)
+
+            report = validate_partition(
+                "binance_spot",
+                "BTCUSDT",
+                "5m",
+                2024,
+                1,
+                raw_root=data_root / "raw",
+                report_root=data_root / "qa_reports",
+            )
+            rule = next(rule for rule in report["rules"] if rule["rule_id"] == "VALUE_003")
+
+            self.assertEqual(report["status"], "FAIL")
+            self.assertEqual(rule["name"], "All Candles Closed")
+            self.assertEqual(rule["status"], "FAIL")
+            self.assertEqual(rule["actual"]["failed_row_count"], 3)
+            self.assertEqual(rule["actual"]["offending_timestamps"], offending_timestamps)
 
     def test_bool_price_column_fails_dtype_rule(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
