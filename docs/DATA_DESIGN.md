@@ -1,27 +1,49 @@
-# 数据设计
+# Artifact Storage Design
 
-## 存储格式
+本文档解释 Artifact 存储设计。执行规范与系统约束统一见 `AGENTS.md`。
 
-原始数据优先保存为 CSV，方便 Python 和 TypeScript 共同使用。
+## Layout
 
-后续特征数据可以保存为 Parquet，以提升读取效率、压缩率和类型表达能力。
+Research OS 使用 `artifacts/` 作为本地研究产物根目录：
 
-## V1 数据范围
+```text
+artifacts/
+  raw/
+  qa/
+    reports/
+    summary/
+  research/
+    datasets/
+  feature/
+    datasets/
+  label/
+    datasets/
+  split/
+  experiments/
+  models/
+```
 
-V1 只使用 OHLCV。
+## Storage Roles
 
-暂不引入订单簿、资金费率、持仓量、链上数据。
+`raw/` 表示原始市场事实。
 
-详细 Data Contract 见：
+`qa/` 表示数据质量检查结果。
 
-`docs/data/DATA_CONTRACT.md`
+`research/datasets/` 表示经过标准化处理、可供后续 Feature 与 Label 阶段使用的数据集。
 
-## 数据质量检查
+`feature/`、`label/`、`split/`、`experiments/`、`models/` 对应研究生命周期中的后续产物。
 
-必须检查以下问题：
+## File Model
 
-1. 缺失 K 线
-2. 重复 K 线
-3. 时间间隔异常
-4. OHLC 逻辑错误
-5. 成交量异常
+Artifact 的文件模型由数据文件和 metadata 文件组成。
+
+数据文件保存可计算内容，metadata 文件保存上下文信息，例如输入来源、配置、生成过程和统计摘要。
+
+对于会重复生成的产物，目录通常先按业务身份分组，再以 `artifact_id` 作为具体版本目录：
+
+```text
+artifacts/research/datasets/{exchange}/{symbol}/{timeframe}/{artifact_id}/
+artifacts/qa/reports/{exchange}/{symbol}/{timeframe}/YYYY/MM/{artifact_id}/
+```
+
+详细数据结构说明见 `docs/data/DATA_CONTRACT.md`。

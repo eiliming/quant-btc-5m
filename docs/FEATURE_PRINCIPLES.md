@@ -1,24 +1,28 @@
-# Feature 原则
+# Feature Set Design
 
-## 时间约束
+本文档解释 Feature Set 的设计概念。执行规范与系统约束统一见 `AGENTS.md`。
 
-Feature 必须只使用当前时刻及过去数据。
+## Concept
 
-严禁使用未来数据。
+Feature 是市场现象的数字化表达。
 
-## 设计原则
+Feature Set 是一组 Feature 的结构化集合，用于将研究假设转化为模型可以消费的输入。
 
-每个 Feature 应尽量描述一个清晰的市场现象。
+## Research Meaning
 
-不追求一开始堆大量特征，V1 控制在 30 到 80 个特征以内。
+一个好的 Feature 通常对应某种可解释的市场行为，例如：
 
-## Feature 分类
+- trend
+- momentum
+- volatility
+- volume
+- pattern
+- regime
 
-Feature 分为以下类别：
+这些类别帮助研究者从市场现象出发组织特征，而不是从任意数学变换出发堆叠变量。
 
-1. trend
-2. momentum
-3. volatility
-4. volume
-5. pattern
-6. regime
+## Artifact Role
+
+Feature Set Artifact 连接 Dataset Artifact 与 Experiment Artifact。
+
+它表达了“用什么方式观察市场”，并为后续实验提供稳定输入。

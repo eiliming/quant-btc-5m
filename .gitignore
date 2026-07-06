@@ -8,6 +8,17 @@ data/features/*
 data/labels/*
 data/qa_reports/*
 data/research/*
+artifacts/raw/*
+artifacts/.staging/*
+artifacts/qa/reports/*
+artifacts/qa/summary/*
+artifacts/research/datasets/*
+artifacts/feature/datasets/*
+artifacts/label/datasets/*
+artifacts/split/*
+artifacts/experiments/*
+artifacts/models/*
+!artifacts/**/.gitkeep
 reports/*
 models/*
 .DS_Store
