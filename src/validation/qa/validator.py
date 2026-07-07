@@ -51,11 +51,11 @@ def validate_partition(
     raw_root_path = Path(raw_root)
     report_root_path = Path(report_root)
     raw_artifact = find_raw_artifact(raw_root_path, exchange, symbol, timeframe, year, month)
-    partition_dir = (
-        raw_artifact.path
-        if raw_artifact is not None
-        else raw_root_path / exchange / symbol / timeframe / f"{year:04d}" / f"{month:02d}"
-    )
+    if raw_artifact is None:
+        raise FileNotFoundError(
+            f"no raw artifact found for {exchange}/{symbol}/{timeframe} {year:04d}/{month:02d}"
+        )
+    partition_dir = raw_artifact.path
     spec = PartitionSpec(
         exchange=exchange,
         symbol=symbol,
@@ -85,8 +85,7 @@ def validate_partition(
         / exchange
         / symbol
         / timeframe
-        / f"{year:04d}"
-        / f"{month:02d}"
+        / f"{year:04d}{month:02d}"
     )
     report_artifact_root = _write_partition_report_artifact(report_path, report)
     report["artifact_path"] = str(report_artifact_root)
@@ -131,7 +130,7 @@ def run_all(
         )
 
     summary = _summary_report(raw_root, partition_reports)
-    _write_summary_artifact(qa_report_root.parent / "summary" / "summary_report", summary)
+    _write_summary_artifact(qa_report_root.parent / "summary", summary)
     return summary
 
 
@@ -564,11 +563,16 @@ def _write_partition_report_artifact(report_path: Path, report: dict[str, Any]) 
         if column in rules.columns:
             rules[column] = rules[column].map(lambda value: json.dumps(value, sort_keys=True, default=str))
     inputs = list(report.get("inputs", []))
-    artifact_id = manager.generate_artifact_id(
+    report_config = {
+        "report_type": REPORT_TYPE_PARTITION,
+        "schema_version": SCHEMA_VERSION,
+        "partition": report["partition"],
+    }
+    artifact_id = manager.generate_artifact_id("qa_report")
+    content_hash = manager.generate_artifact_identity(
         "qa_report",
         inputs=inputs,
-        config={"schema_version": SCHEMA_VERSION},
-        stats={"status": report["status"], **report["summary"]},
+        config=report_config,
     )
     metadata = manager.build_metadata(
         artifact_id=artifact_id,
@@ -576,44 +580,53 @@ def _write_partition_report_artifact(report_path: Path, report: dict[str, Any]) 
         builder="src.validation.qa.validate_partition",
         version=SCHEMA_VERSION,
         inputs=inputs,
-        config={"report_type": REPORT_TYPE_PARTITION, "schema_version": SCHEMA_VERSION, "partition": report["partition"]},
+        config=report_config,
         stats={
             "status": report["status"],
             "summary": report["summary"],
             "data_summary": report["data_summary"],
         },
+        content_hash=content_hash,
     )
-    artifact_root = report_path / artifact_id
-    return manager.write(artifact_root, rules, metadata)
+    return manager.write(report_path, rules, metadata)
 
 
 def _write_summary_artifact(summary_path: Path, summary: dict[str, Any]) -> None:
     manager = ArtifactManager()
     partitions = pd.DataFrame(summary["partitions"])
-    inputs = [
-        {"artifact_id": str(partition["artifact_id"]), "artifact_type": str(partition["artifact_type"])}
-        for partition in summary["partitions"]
-        if "artifact_id" in partition and "artifact_type" in partition
-    ]
+    summary_config = {
+        "report_type": REPORT_TYPE_SUMMARY,
+        "schema_version": SCHEMA_VERSION,
+        "root_path": summary["root_path"],
+    }
     artifact_id = manager.generate_artifact_id(
         "qa_summary",
-        inputs=inputs,
-        config={"schema_version": SCHEMA_VERSION},
-        stats={"status": summary["status"], **summary["summary"]},
+        target_collection=summary_path,
+    )
+    content_hash = manager.generate_artifact_identity(
+        "qa_summary",
+        inputs=[],
+        config=summary_config,
     )
     metadata = manager.build_metadata(
         artifact_id=artifact_id,
         artifact_type="qa_summary",
         builder="src.validation.qa.run_all",
         version=SCHEMA_VERSION,
-        inputs=inputs,
-        config={"report_type": REPORT_TYPE_SUMMARY, "schema_version": SCHEMA_VERSION, "root_path": summary["root_path"]},
+        inputs=[],
+        config=summary_config,
         stats={
             "status": summary["status"],
             "summary": summary["summary"],
         },
+        content_hash=content_hash,
     )
-    manager.write(summary_path / artifact_id, partitions, metadata)
+    manager.write(
+        summary_path / artifact_id,
+        partitions,
+        metadata,
+        collection_root=summary_path,
+    )
 
 
 def _expected_dtypes() -> dict[str, str]:

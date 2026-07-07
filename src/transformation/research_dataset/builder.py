@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.core.artifact.artifact_io import DATA_FILE_NAME
+from src.core.artifact.artifact_io import DATA_FILE_NAME, METADATA_FILE_NAME
 from src.core.artifact.artifact_manager import ArtifactManager
 from src.core.artifact.artifact_io import read_json
 from src.core.artifact.raw_artifact import discover_raw_artifacts
@@ -16,7 +16,7 @@ from src.transformation.research_dataset.schema import (
     DATASET_VERSION,
     SCHEMA_VERSION,
     dataset_artifact_root,
-    dataset_path,
+    dataset_collection_path,
     normalize_research_frame,
     validate_research_frame,
 )
@@ -59,41 +59,36 @@ def build_dataset(
     validate_research_frame(dataset, timeframe)
 
     manager = ArtifactManager(output_root)
+    identity_config = {
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "schema_version": SCHEMA_VERSION,
+        "dataset_version": DATASET_VERSION,
+    }
+    metadata_config = {
+        **identity_config,
+        "source_root": str(raw_root),
+        "qa_report_root": str(qa_report_root),
+    }
+    target_collection = dataset_collection_path(output_root, exchange, symbol, timeframe)
     artifact_id = manager.generate_artifact_id(
         "research_dataset",
-        inputs=input_refs,
-        config={
-            "exchange": exchange,
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "schema_version": SCHEMA_VERSION,
-            "dataset_version": DATASET_VERSION,
-            "source_root": str(raw_root),
-            "qa_report_root": str(qa_report_root),
-        },
-        stats={
-            "start_timestamp": int(dataset["timestamp"].iloc[0]),
-            "end_timestamp": int(dataset["timestamp"].iloc[-1]),
-            "row_count": len(dataset),
-        },
+        target_collection=target_collection,
     )
     artifact_root = dataset_artifact_root(output_root, exchange, symbol, timeframe, artifact_id)
-    target_dataset = dataset_path(output_root, exchange, symbol, timeframe, artifact_id)
+    content_hash = manager.generate_artifact_identity(
+        "research_dataset",
+        inputs=input_refs,
+        config=identity_config,
+    )
     artifact_metadata = manager.build_metadata(
         artifact_id=artifact_id,
         artifact_type="research_dataset",
         builder="src.transformation.research_dataset.build_dataset",
         version=DATASET_VERSION,
         inputs=input_refs,
-        config={
-            "exchange": exchange,
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "schema_version": SCHEMA_VERSION,
-            "dataset_version": DATASET_VERSION,
-            "source_root": str(raw_root),
-            "qa_report_root": str(qa_report_root),
-        },
+        config=metadata_config,
         stats={
             "start_timestamp": int(dataset["timestamp"].iloc[0]),
             "end_timestamp": int(dataset["timestamp"].iloc[-1]),
@@ -102,6 +97,7 @@ def build_dataset(
             "row_count": len(dataset),
             "source_partitions": source_partitions,
         },
+        content_hash=content_hash,
     )
 
     metadata = DatasetMetadata(
@@ -124,9 +120,9 @@ def build_dataset(
         created_at=artifact_metadata.created_at,
         provenance=artifact_metadata.provenance.to_dict(),
     )
-    manager.write(artifact_root, dataset, artifact_metadata)
+    manager.write(artifact_root, dataset, artifact_metadata, collection_root=target_collection)
 
-    written = pd.read_parquet(target_dataset)
+    written = pd.read_parquet(artifact_root / DATA_FILE_NAME)
     validate_research_frame(written, timeframe)
     if len(written) != metadata.row_count:
         raise ValueError(
@@ -171,11 +167,10 @@ def _qa_report_metadata_path(
     year: int,
     month: int,
 ) -> Path:
-    report_collection = qa_report_root / exchange / symbol / timeframe / f"{year:04d}" / f"{month:02d}"
-    candidates = [path for path in report_collection.glob("*/metadata.json") if (path.parent / DATA_FILE_NAME).is_file()]
-    if not candidates:
-        return report_collection / "metadata.json"
-    return max(candidates, key=lambda path: path.stat().st_mtime)
+    return (
+        qa_report_root / exchange / symbol / timeframe
+        / f"{year:04d}{month:02d}" / METADATA_FILE_NAME
+    )
 
 
 def _normalize_qa_status(value: Any) -> str:

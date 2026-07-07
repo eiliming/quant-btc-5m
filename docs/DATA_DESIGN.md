@@ -58,26 +58,27 @@ metadata.json
 
 `metadata.inputs` 只允许保存 Artifact 引用列表：
 
-```json
-[
-  {
-    "artifact_id": "raw_kline_partition_...",
-    "artifact_type": "raw_kline_partition"
-  }
-]
-```
+	```json
+	[
+	  {
+	    "artifact_id": "raw_kline",
+	    "artifact_type": "raw_kline_partition"
+	  }
+	]
+	```
 
 路径、交易所、symbol、timeframe、时间范围等运行上下文必须进入 `config` 或 `stats`，不能作为 dependency 写入 `inputs`。
 
 ## Artifact Identity
 
-`artifact_id` 由稳定身份和唯一执行 ID 组成：
+**非版本化类型**（`raw_kline_partition`、`qa_report`）使用固定 `artifact_id`（如 `raw_kline`、`qa_report`），无版本号、无 `_current.json`。数据不可覆盖，重跑需手动删除。
 
+**版本化类型**（`qa_summary`、`research_dataset` 等）：
 ```text
-{artifact_type}_{artifact_identity}_{run_id}
+{type_prefix}_v{N}
 ```
-
-- `artifact_identity` 由 artifact type、输入 Artifact 引用和核心配置计算，用于 deterministic lineage。
-- `run_id` 标识一次具体执行，用于支持重复运行和实验对比。
+- `N` 为自增整数，由系统扫描目标 collection 目录自动分配。
+- `content_hash`（SHA-256 前 16 位 hex）和 `run_id`（UUID4）记录在 `metadata.json` 顶层。
+- 版本由 `_current.json` pointer 管理，每个 collection 目录下一个。
 
 详细数据结构说明见 `docs/data/DATA_CONTRACT.md`。

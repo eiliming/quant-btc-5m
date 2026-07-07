@@ -98,8 +98,11 @@ python -m compileall -q src cli.py
 ## 文档
 
 - `AGENTS.md`: 唯一执行准则与治理宪法
+- `docs/PROJECT_DEFINITION.md`: 项目定义与范围
 - `docs/ARCHITECTURE_RESEARCH_OS.md`: Research OS 架构说明
 - `docs/DATA_DESIGN.md`: Artifact 存储设计说明
 - `docs/data/DATA_CONTRACT.md`: Dataset Artifact 结构说明
 - `docs/FEATURE_PRINCIPLES.md`: Feature Set 概念说明
 - `docs/LABEL_DESIGN.md`: Label 概念说明
+- `docs/BACKTEST_PRINCIPLES.md`: 回测与策略原则
+- `docs/MODEL_STRATEGY_BOUNDARY.md`: 模型与策略层边界定义

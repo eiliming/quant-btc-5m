@@ -24,21 +24,14 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 
 
 def raw_partition(root: Path, year: int, month: int, *, timeframe: str = "5m") -> Path:
-    return root / "raw" / "binance_spot" / "BTCUSDT" / timeframe / f"{year:04d}" / f"{month:02d}"
+    partition_label = f"{year:04d}{month:02d}"
+    return root / "raw" / "binance_spot" / "BTCUSDT" / timeframe / partition_label
 
 
 def qa_report_path(root: Path, year: int, month: int, *, timeframe: str = "5m") -> Path:
     return (
-        root
-        / "qa"
-        / "reports"
-        / "binance_spot"
-        / "BTCUSDT"
-        / timeframe
-        / f"{year:04d}"
-        / f"{month:02d}"
-        / f"qa_report_{year:04d}_{month:02d}"
-        / "metadata.json"
+        root / "qa" / "reports" / "binance_spot" / "BTCUSDT" / timeframe
+        / f"{year:04d}{month:02d}" / "metadata.json"
     )
 
 
@@ -94,12 +87,21 @@ def write_partition(
     write_json(
         partition_dir / "metadata.json",
         {
-            "artifact_id": f"raw_{year:04d}_{month:02d}",
+            "artifact_id": "raw_kline",
             "artifact_type": "raw_kline_partition",
             "created_at": "2024-01-01T00:00:00Z",
-            "inputs": {},
+            "content_hash": "abc123def4567890",
+            "run_id": "00000000000000000000000000000000",
+            "inputs": [],
             "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
-            "config": {"exchange": "binance_spot", "symbol": "BTCUSDT", "timeframe": timeframe},
+            "config": {
+                "exchange": "binance_spot",
+                "symbol": "BTCUSDT",
+                "timeframe": timeframe,
+                "partition": f"{year:04d}/{month:02d}",
+                "year": year,
+                "month": month,
+            },
             "stats": {"status": "completed"},
         },
     )
@@ -114,18 +116,14 @@ def write_partition(
         write_json(
             qa_metadata_path,
             {
-                "artifact_id": f"qa_report_{year:04d}_{month:02d}",
+                "artifact_id": "qa_report",
                 "artifact_type": "qa_report",
                 "created_at": "2024-01-01T00:00:00Z",
-                "inputs": {
-                    "partition": {
-                        "exchange": "binance_spot",
-                        "symbol": "BTCUSDT",
-                        "timeframe": timeframe,
-                        "year": year,
-                        "month": month,
-                    }
-                },
+                "content_hash": "def456abc7890123",
+                "run_id": "11111111111111111111111111111111",
+                "inputs": [
+                    {"artifact_id": "raw_kline", "artifact_type": "raw_kline_partition"}
+                ],
                 "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
                 "config": {"report_type": "partition_qa", "schema_version": "v1"},
                 "stats": {"status": qa_status},
@@ -201,19 +199,24 @@ class ResearchDatasetTests(unittest.TestCase):
                     output_root=root / "research/datasets",
                 )
 
-            failed_qa_metadata = qa_report_path(root, 2024, 1)
-            failed_qa_metadata.parent.mkdir(parents=True, exist_ok=True)
+            # Also test: QA report exists but status is FAIL
+            failed_qa_dir = (
+                root / "qa" / "reports" / "binance_spot" / "BTCUSDT" / "5m" / "202401"
+            )
+            failed_qa_dir.mkdir(parents=True, exist_ok=True)
             pd.DataFrame([{"rule_id": "TEST", "status": "FAIL"}]).to_parquet(
-                failed_qa_metadata.parent / "data.parquet",
+                failed_qa_dir / "data.parquet",
                 index=False,
             )
             write_json(
-                failed_qa_metadata,
+                failed_qa_dir / "metadata.json",
                 {
-                    "artifact_id": "qa_report_fail",
+                    "artifact_id": "qa_report",
                     "artifact_type": "qa_report",
                     "created_at": "2024-01-01T00:00:00Z",
-                    "inputs": {},
+                    "content_hash": "fail000000000000",
+                    "run_id": "22222222222222222222222222222222",
+                    "inputs": [{"artifact_id": "raw_kline", "artifact_type": "raw_kline_partition"}],
                     "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
                     "config": {},
                     "stats": {"status": "FAIL"},

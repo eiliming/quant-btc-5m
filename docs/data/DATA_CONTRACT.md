@@ -7,7 +7,9 @@
 - Exchange: Binance
 - Market Type: Spot
 - Symbols: BTCUSDT, ETHUSDT
-- Timeframes: 1m, 5m, 15m, 30m, 1h, 4h
+- Timeframes: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d
+  - 下载层（`downloader.py`）当前支持 `1m, 5m, 15m, 30m, 1h, 4h`
+  - schema 层（`schema.py`）已扩展支持 `3m, 1d`，为后续下载扩展预留
 - Data Type: OHLCV kline
 - Timezone: UTC
 
@@ -66,26 +68,31 @@ Dataset metadata 将数据身份、来源、生成方式、配置和统计摘要
 
 所有 Artifact metadata 必须包含标准字段：
 
-```json
-{
-  "artifact_id": "...",
-  "artifact_type": "...",
-  "created_at": "...",
-  "inputs": [
-    {
-      "artifact_id": "...",
-      "artifact_type": "..."
-    }
-  ],
-  "provenance": {
-    "builder": "...",
-    "version": "...",
-    "git_commit": "..."
-  },
-  "config": {},
-  "stats": {}
-}
-```
+	```json
+	{
+	  "artifact_id": "...",
+	  "artifact_type": "...",
+	  "created_at": "...",
+	  "content_hash": "...",
+	  "run_id": "...",
+	  "inputs": [
+	    {
+	      "artifact_id": "...",
+	      "artifact_type": "..."
+	    }
+	  ],
+	  "provenance": {
+	    "builder": "...",
+	    "version": "...",
+	    "git_commit": "..."
+	  },
+	  "config": {},
+	  "stats": {}
+	}
+	```
+
+	- `content_hash`：SHA-256(artifact_type + inputs + config) 前 16 位 hex，用于可复现性标识。
+	- `run_id`：UUID4 hex，单次执行唯一标识。
 
 `inputs` 是 Artifact dependency list，只能保存上游 artifact reference，不能保存路径字符串或非结构化输入来源。路径、分区、schema version、交易对和时间范围属于 `config` 或 `stats`。
 

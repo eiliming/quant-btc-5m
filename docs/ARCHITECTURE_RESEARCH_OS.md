@@ -24,14 +24,21 @@ Artifact 是一次计算或研究步骤的持久化结果。
 
 对于可重复生成的研究产物，`artifact_root` 通常是带 `artifact_id` 的版本目录。
 
-`artifact_id` 分为两层语义：
+`artifact_id` 根据类型是否版本化有两种方案：
 
+**非版本化类型**（`raw_kline_partition`、`qa_report`）使用固定名称：
 ```text
-{artifact_type}_{artifact_identity}_{run_id}
+{type_prefix}
 ```
+例如 `raw_kline`、`qa_report`。
 
-- `artifact_identity` 由 artifact type、输入 Artifact 引用和核心配置计算，表达可复现身份。
-- `run_id` 表达一次唯一执行，允许同一 identity 重复运行并生成新版本。
+**版本化类型**（`research_dataset`、`feature_dataset` 等）使用自增版本号：
+```text
+{type_prefix}_v{N}
+```
+其中 `N` 由系统扫描目标 collection 目录自动分配，从 1 开始。
+
+`content_hash`（SHA-256(artifact_type + inputs + config) 前 16 位 hex）和 `run_id`（UUID4 hex）不进入目录名，而是存储在 `metadata.json` 顶层字段中，分别用于可复现性标识和单次执行追踪。
 
 `metadata.inputs` 是 Artifact dependency list，结构如下：
 

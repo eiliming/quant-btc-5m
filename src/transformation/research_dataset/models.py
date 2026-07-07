@@ -58,11 +58,12 @@ class DatasetMetadata:
         config = dict(payload["config"])
         stats = dict(payload["stats"])
         raw_inputs = payload["inputs"]
-        legacy_inputs = raw_inputs if isinstance(raw_inputs, dict) else {}
+        if not isinstance(raw_inputs, list):
+            raise ValueError("research dataset metadata inputs must be a list of artifact references")
         input_artifacts = [
             {"artifact_id": str(item["artifact_id"]), "artifact_type": str(item["artifact_type"])}
             for item in raw_inputs
-        ] if isinstance(raw_inputs, list) else []
+        ]
         return cls(
             artifact_id=str(payload["artifact_id"]),
             artifact_type=str(payload["artifact_type"]),
@@ -76,11 +77,11 @@ class DatasetMetadata:
             start_time_utc=str(stats["start_time_utc"]),
             end_time_utc=str(stats["end_time_utc"]),
             row_count=int(stats["row_count"]),
-            source_root=str(config.get("source_root", legacy_inputs.get("source_root", ""))),
-            qa_report_root=str(config.get("qa_report_root", legacy_inputs.get("qa_report_root", ""))),
+            source_root=str(config.get("source_root", "")),
+            qa_report_root=str(config.get("qa_report_root", "")),
             source_partitions=[
                 str(partition)
-                for partition in stats.get("source_partitions", legacy_inputs.get("source_partitions", []))
+                for partition in stats.get("source_partitions", [])
             ],
             input_artifacts=input_artifacts,
             created_at=str(payload["created_at"]),

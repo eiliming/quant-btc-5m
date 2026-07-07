@@ -67,7 +67,19 @@ def partition_dir(
     symbol: str = "BTCUSDT",
     timeframe: str = "5m",
 ) -> Path:
-    return data_root / "raw" / "binance_spot" / symbol / timeframe / year / month
+    partition_label = f"{year}{month}"
+    return data_root / "raw" / "binance_spot" / symbol / timeframe / partition_label
+
+
+def qa_report_dir(
+    data_root: Path,
+    year: str = "2024",
+    month: str = "01",
+    *,
+    symbol: str = "BTCUSDT",
+    timeframe: str = "5m",
+) -> Path:
+    return data_root / "qa" / "reports" / "binance_spot" / symbol / timeframe / f"{year}{month}"
 
 
 def write_partition(
@@ -88,12 +100,21 @@ def write_partition(
         write_json(
             target / "metadata.json",
             {
-                "artifact_id": f"raw_{symbol}_{timeframe}_202401",
+                "artifact_id": "raw_kline",
                 "artifact_type": "raw_kline_partition",
                 "created_at": "2024-01-01T00:00:00Z",
-                "inputs": {},
+                "content_hash": "abc123def4567890",
+                "run_id": "00000000000000000000000000000000",
+                "inputs": [],
                 "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
-                "config": {"exchange": "binance_spot", "symbol": symbol, "timeframe": timeframe},
+                "config": {
+                    "exchange": "binance_spot",
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "partition": "2024/01",
+                    "year": 2024,
+                    "month": 1,
+                },
                 "stats": {"status": "completed"},
             },
         )
@@ -116,7 +137,7 @@ class QaValidatorTests(unittest.TestCase):
                 report_root=data_root / "qa" / "reports",
             )
 
-            report_path = newest_artifact_root(data_root / "qa" / "reports" / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01")
+            report_path = qa_report_dir(data_root)
             self.assertEqual(report["status"], "PASS")
             self.assertEqual(report["summary"]["total_rules"], 13)
             self.assertEqual(report["summary"]["error_count"], 0)
@@ -126,52 +147,39 @@ class QaValidatorTests(unittest.TestCase):
             self.assertTrue((report_path / "data.parquet").is_file())
             self.assertEqual(json.loads((report_path / "metadata.json").read_text(encoding="utf-8"))["stats"]["status"], "PASS")
 
-    def test_repeated_partition_validation_creates_new_artifact_versions(self) -> None:
+    def test_repeated_partition_validation_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             write_partition(data_root)
 
             validate_partition(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                2024,
-                1,
+                "binance_spot", "BTCUSDT", "5m", 2024, 1,
                 raw_root=data_root / "raw",
                 report_root=data_root / "qa" / "reports",
             )
-            validate_partition(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                2024,
-                1,
-                raw_root=data_root / "raw",
-                report_root=data_root / "qa" / "reports",
-            )
-
-            collection = data_root / "qa" / "reports" / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01"
-            artifact_roots = [path.parent for path in collection.glob("*/metadata.json")]
-            self.assertEqual(len(artifact_roots), 2)
+            # QA reports are non-versioned — second write to same path raises
+            with self.assertRaises(FileExistsError):
+                validate_partition(
+                    "binance_spot", "BTCUSDT", "5m", 2024, 1,
+                    raw_root=data_root / "raw",
+                    report_root=data_root / "qa" / "reports",
+                )
 
     def test_missing_metadata_fails_partition(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             write_partition(data_root, metadata=False)
 
-            report = validate_partition(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                2024,
-                1,
-                raw_root=data_root / "raw",
-                report_root=data_root / "qa" / "reports",
-            )
-
-            self.assertEqual(report["status"], "FAIL")
-            self.assertEqual(report["summary"]["warning_count"], 0)
-            self.assertEqual(report["summary"]["error_count"], 1)
+            with self.assertRaises(FileNotFoundError):
+                validate_partition(
+                    "binance_spot",
+                    "BTCUSDT",
+                    "5m",
+                    2024,
+                    1,
+                    raw_root=data_root / "raw",
+                    report_root=data_root / "qa" / "reports",
+                )
 
     def test_schema_time_series_and_value_failures_are_reported(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -254,29 +262,29 @@ class QaValidatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
 
-            report = validate_partition(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                2024,
-                1,
-                raw_root=data_root / "raw",
-                report_root=data_root / "qa" / "reports",
-            )
+            with self.assertRaises(FileNotFoundError):
+                validate_partition(
+                    "binance_spot",
+                    "BTCUSDT",
+                    "5m",
+                    2024,
+                    1,
+                    raw_root=data_root / "raw",
+                    report_root=data_root / "qa" / "reports",
+                )
 
-            self.assertEqual(report["status"], "FAIL")
             self.assertFalse((data_root / "raw").exists())
-            self.assertTrue(newest_artifact_root(data_root / "qa" / "reports" / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "01").is_dir())
 
     def test_discover_partitions_only_accepts_valid_directory_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             raw_root = data_root / "raw"
             write_partition(data_root)
-            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "13").mkdir(parents=True)
-            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "24" / "01").mkdir(parents=True)
-            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024" / "1").mkdir(parents=True)
-            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024").mkdir(parents=True, exist_ok=True)
+            # Invalid directory shapes at partition level — ignored by discover
+            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "202413").mkdir(parents=True)
+            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2401").mkdir(parents=True)
+            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "20241").mkdir(parents=True)
+            (raw_root / "binance_spot" / "BTCUSDT" / "5m" / "2024").mkdir(parents=True)
 
             self.assertEqual(discover_partitions(raw_root), [("binance_spot", "BTCUSDT", "5m", "2024", "01")])
 
@@ -287,7 +295,7 @@ class QaValidatorTests(unittest.TestCase):
 
             summary = run_all(root=data_root / "raw")
 
-            summary_path = newest_artifact_root(data_root / "qa" / "summary" / "summary_report")
+            summary_path = newest_artifact_root(data_root / "qa" / "summary")
             self.assertEqual(summary["status"], "PASS")
             self.assertEqual(summary["summary"]["total_partitions"], 1)
             self.assertEqual(summary["summary"]["pass_count"], 1)
@@ -311,17 +319,16 @@ class QaValidatorTests(unittest.TestCase):
             self.assertTrue((summary_path / "data.parquet").is_file())
             self.assertEqual(json.loads((summary_path / "metadata.json").read_text(encoding="utf-8"))["stats"]["status"], "PASS")
 
-    def test_repeated_run_all_creates_new_summary_versions(self) -> None:
+    def test_repeated_run_all_is_idempotent_for_non_versioned_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             write_partition(data_root)
 
             run_all(root=data_root / "raw")
-            run_all(root=data_root / "raw")
-
-            collection = data_root / "qa" / "summary" / "summary_report"
-            artifact_roots = [path.parent for path in collection.glob("*/metadata.json")]
-            self.assertEqual(len(artifact_roots), 2)
+            # QA reports are non-versioned — second run_all hits FileExistsError
+            # on the first partition's qa_report/
+            with self.assertRaises(FileExistsError):
+                run_all(root=data_root / "raw")
 
     def test_run_all_missing_or_empty_root_fails_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -345,9 +352,7 @@ class QaValidatorTests(unittest.TestCase):
             summary = run_all(root=data_root / "raw")
             partition = summary["partitions"][0]
             report_metadata = json.loads(
-                (newest_artifact_root(data_root / "qa" / "reports" / "binance_spot" / "ETHUSDT" / "15m" / "2024" / "01") / "metadata.json").read_text(
-                    encoding="utf-8"
-                )
+                (qa_report_dir(data_root, symbol="ETHUSDT", timeframe="15m") / "metadata.json").read_text(encoding="utf-8")
             )
 
             self.assertEqual(summary["status"], "PASS")

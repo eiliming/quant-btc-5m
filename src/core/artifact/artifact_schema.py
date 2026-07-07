@@ -8,6 +8,8 @@ STANDARD_METADATA_KEYS = (
     "artifact_id",
     "artifact_type",
     "created_at",
+    "content_hash",
+    "run_id",
     "inputs",
     "provenance",
     "config",
@@ -54,6 +56,8 @@ class ArtifactMetadata:
     artifact_id: str
     artifact_type: str
     created_at: str
+    content_hash: str = ""
+    run_id: str = ""
     inputs: list[ArtifactReference] = field(default_factory=list)
     provenance: ArtifactProvenance = field(
         default_factory=lambda: ArtifactProvenance(builder="unknown", version="unknown", git_commit="unknown")
@@ -66,6 +70,8 @@ class ArtifactMetadata:
             "artifact_id": self.artifact_id,
             "artifact_type": self.artifact_type,
             "created_at": self.created_at,
+            "content_hash": self.content_hash,
+            "run_id": self.run_id,
             "inputs": [_reference_to_dict(artifact) for artifact in self.inputs],
             "provenance": self.provenance.to_dict(),
             "config": self.config,
@@ -74,7 +80,8 @@ class ArtifactMetadata:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ArtifactMetadata":
-        missing = [key for key in STANDARD_METADATA_KEYS if key not in payload]
+        required = {"artifact_id", "artifact_type", "created_at", "inputs", "provenance", "config", "stats"}
+        missing = [key for key in required if key not in payload]
         if missing:
             raise ValueError(f"artifact metadata missing required keys: {missing}")
         provenance = payload["provenance"]
@@ -87,6 +94,8 @@ class ArtifactMetadata:
             artifact_id=str(payload["artifact_id"]),
             artifact_type=str(payload["artifact_type"]),
             created_at=str(payload["created_at"]),
+            content_hash=str(payload.get("content_hash", "")),
+            run_id=str(payload.get("run_id", "")),
             inputs=[ArtifactReference.from_dict(item) for item in inputs],
             provenance=ArtifactProvenance.from_dict(provenance),
             config=dict(payload["config"]),

@@ -159,6 +159,8 @@ artifact_root/
   "artifact_id": "...",
   "artifact_type": "...",
   "created_at": "...",
+  "content_hash": "...",
+  "run_id": "...",
   "inputs": [
     {
       "artifact_id": "...",
@@ -175,14 +177,25 @@ artifact_root/
 }
 ```
 
+- `content_hash`：SHA-256(artifact_type + inputs + config) 前 16 位 hex，用于 identity 可复现性。
+- `run_id`：UUID4 hex，单次执行唯一标识。
+
 `artifact_id` 标准结构：
 
+**非版本化类型**（`raw_kline_partition`、`qa_report`）：
 ```text
-{artifact_type}_{artifact_identity}_{run_id}
+{type_prefix}
 ```
+固定名（如 `raw_kline`、`qa_report`），无版本号，无 `_current.json`。
+数据不可覆盖，重跑需手动删除旧目录。
 
-- `artifact_identity`：由 artifact type、输入 Artifact 引用和核心配置计算得到，必须可复现。
-- `run_id`：单次执行 ID，必须唯一，用于支持同一身份的重复运行。
+**版本化类型**（`qa_summary`、`research_dataset`、`feature_dataset` 等）：
+```text
+{type_prefix}_v{N}
+```
+- `N`：自增整数版本号，由系统扫描目标 collection 目录自动分配，从 1 开始。
+- 版本由 `_current.json` pointer 管理：每个 artifact collection 目录下有一个 `_current.json`，记录 `{"current": "research_dataset_v2", "history": [...]}`。
+- `content_hash` 和 `run_id` 不在 `artifact_id` 中出现，仅记录在 `metadata.json` 顶层字段中。
 
 强制规则：
 

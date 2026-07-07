@@ -27,6 +27,14 @@ def write_json_immutable(path: Path, payload: dict[str, Any]) -> None:
         file.write("\n")
 
 
+def write_json_mutable(path: Path, payload: dict[str, Any]) -> None:
+    """Write a JSON file that may be overwritten (e.g. _current.json pointers)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2, sort_keys=True)
+        file.write("\n")
+
+
 def write_parquet_immutable(path: Path, frame: pd.DataFrame) -> None:
     if path.exists():
         raise FileExistsError(f"refusing to overwrite immutable artifact file: {path}")

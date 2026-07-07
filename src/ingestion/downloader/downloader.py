@@ -126,6 +126,7 @@ def _download_partition(
 ) -> DownloadPartitionResult:
     manager = ArtifactManager(data_root)
     partition = partition_label(start_time)
+    partition_dir = partition.replace("/", "")
     existing_artifact = find_completed_raw_artifact(
         data_root / "raw",
         exchange,
@@ -157,12 +158,16 @@ def _download_partition(
             start_time=start_time,
             end_time=end_time,
         )
-        artifact_id = manager.generate_artifact_id(
+        target_collection = manager.root_for(
+            "raw_kline_partition", exchange, symbol, timeframe, partition_dir
+        )
+        artifact_id = manager.generate_artifact_id("raw_kline_partition")
+        artifact_root = target_collection
+        content_hash = manager.generate_artifact_identity(
             "raw_kline_partition",
             inputs=[],
             config=identity_config,
         )
-        artifact_root = manager.root_for("raw_kline_partition", exchange, symbol, timeframe, artifact_id=artifact_id)
         metadata = manager.build_metadata(
             artifact_id=artifact_id,
             artifact_type="raw_kline_partition",
@@ -180,6 +185,7 @@ def _download_partition(
                 "rows_downloaded": len(frame),
                 "row_count": len(frame),
             },
+            content_hash=content_hash,
         )
         manager.write(artifact_root, frame, metadata)
 

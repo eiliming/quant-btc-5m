@@ -59,12 +59,11 @@ def contract_frame(timestamp: int = 1704067200000) -> pd.DataFrame:
 
 def raw_partition(
     root: Path,
-    artifact_id: str = "raw_test_partition",
     *,
     symbol: str = "BTCUSDT",
     timeframe: str = "5m",
 ) -> Path:
-    return root / "raw" / "binance_spot" / symbol / timeframe / artifact_id
+    return root / "raw" / "binance_spot" / symbol / timeframe / "202401"
 
 
 def write_completed_partition(partition_dir: Path, frame: pd.DataFrame | None = None) -> None:
@@ -74,9 +73,11 @@ def write_completed_partition(partition_dir: Path, frame: pd.DataFrame | None = 
     write_json(
         partition_dir / "metadata.json",
         {
-            "artifact_id": "raw_test_partition",
+            "artifact_id": "raw_kline",
             "artifact_type": "raw_kline_partition",
             "created_at": "2024-01-01T00:00:00Z",
+            "content_hash": "abc123def4567890",
+            "run_id": "00000000000000000000000000000000",
             "inputs": [],
             "provenance": {"builder": "test", "version": "v1", "git_commit": "test"},
             "config": {
@@ -218,7 +219,7 @@ class DownloaderTests(unittest.TestCase):
             write_json(
                 partition_dir / "metadata.json",
                 {
-                    "artifact_id": "raw_test_partition",
+                    "artifact_id": "raw_kline",
                     "artifact_type": "raw_kline_partition",
                     "created_at": "2024-01-01T00:00:00Z",
                     "inputs": [],
@@ -234,22 +235,16 @@ class DownloaderTests(unittest.TestCase):
             )
             client = FakeClient(contract_frame())
 
+            # Stale metadata without data.parquet blocks re-write via immutable guard
             result = download_klines(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                "2024-01-01T00:00:00Z",
-                "2024-02-01T00:00:00Z",
-                data_root=data_root,
-                client=client,
+                "binance_spot", "BTCUSDT", "5m",
+                "2024-01-01T00:00:00Z", "2024-02-01T00:00:00Z",
+                data_root=data_root, client=client,
             )
-
-            self.assertEqual(result.downloaded_count, 1)
-            self.assertEqual(len(client.calls), 1)
+            self.assertEqual(result.failed_count, 1)
             self.assertFalse((partition_dir / "data.parquet").exists())
-            self.assertTrue((Path(result.partitions[0].path) / "data.parquet").is_file())
 
-    def test_force_creates_new_artifact_without_overwriting_completed_partition(self) -> None:
+    def test_force_with_existing_partition_fails_on_non_versioned_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_root = Path(temp_dir)
             partition_dir = raw_partition(data_root)
@@ -258,24 +253,18 @@ class DownloaderTests(unittest.TestCase):
             old_marker.write_text("old", encoding="utf-8")
             client = FakeClient(contract_frame())
 
+            # Non-versioned raw_kline cannot be overwritten — force results in failure
             result = download_klines(
-                "binance_spot",
-                "BTCUSDT",
-                "5m",
-                "2024-01-01T00:00:00Z",
-                "2024-02-01T00:00:00Z",
-                force=True,
-                data_root=data_root,
-                client=client,
+                "binance_spot", "BTCUSDT", "5m",
+                "2024-01-01T00:00:00Z", "2024-02-01T00:00:00Z",
+                force=True, data_root=data_root, client=client,
             )
+            self.assertEqual(result.failed_count, 1)
 
-            self.assertEqual(result.downloaded_count, 1)
-            self.assertEqual(len(client.calls), 1)
+            # Original data preserved
             self.assertTrue(old_marker.exists())
             metadata = json.loads((partition_dir / "metadata.json").read_text(encoding="utf-8"))
             self.assertEqual(metadata["stats"]["status"], "completed")
-            self.assertNotEqual(Path(result.partitions[0].path), partition_dir)
-            self.assertTrue((Path(result.partitions[0].path) / "data.parquet").is_file())
 
     def test_force_download_failure_preserves_existing_raw_partition(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

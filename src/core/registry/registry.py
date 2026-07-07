@@ -106,19 +106,3 @@ def _metadata_inputs(metadata: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(item, dict) or "artifact_id" not in item or "artifact_type" not in item:
             raise ValueError("registry metadata inputs must contain artifact_id and artifact_type")
     return inputs
-
-
-class DatasetRegistry(ArtifactRegistry):
-    pass
-
-
-class FeatureSetRegistry(ArtifactRegistry):
-    pass
-
-
-class LabelRegistry(ArtifactRegistry):
-    pass
-
-
-class ExperimentRegistry(ArtifactRegistry):
-    pass

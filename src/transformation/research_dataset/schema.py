@@ -6,6 +6,9 @@ import pandas as pd
 from pandas.api.types import is_bool_dtype, is_float_dtype, is_integer_dtype, is_numeric_dtype
 
 
+from src.core.artifact.artifact_manager import ArtifactManager
+
+
 SCHEMA_VERSION = "research_ohlcv_v1"
 DATASET_VERSION = "v1"
 RESEARCH_COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
@@ -104,10 +107,11 @@ def resolve_dataset_artifact_root(
     if artifact_id is not None:
         return collection / artifact_id
 
-    candidates = [path for path in collection.glob("*/metadata.json") if (path.parent / "data.parquet").is_file()]
-    if not candidates:
-        return collection
-    return max(candidates, key=lambda path: path.stat().st_mtime).parent
+    current_id = ArtifactManager.resolve_current(collection)
+    if current_id is not None and (collection / current_id / "data.parquet").is_file():
+        return collection / current_id
+
+    return collection
 
 
 def dataset_path(root: Path, exchange: str, symbol: str, timeframe: str, artifact_id: str | None = None) -> Path:
