@@ -31,6 +31,7 @@ def build_feature_dataset(
     output_path: str | Path,
     *,
     registry_path: str | Path | None = None,
+    feature_registry_path: str | Path | None = None,
 ) -> Path:
     """Build one immutable, auto-versioned feature dataset artifact.
 
@@ -50,15 +51,15 @@ def build_feature_dataset(
 
     collection_root = Path(output_path)
     _reject_data_os_output(collection_root)
-    registry = FeatureRegistry()
+    feature_registry = FeatureRegistry(feature_registry_path)
     requested = list(dict.fromkeys(features))
     if not requested:
         raise ValueError("at least one feature must be requested")
     source_frame = pd.read_parquet(source_file)
     validate_research_frame(source_frame, dataset_metadata.timeframe)
-    engine = FeatureEngine(registry)
+    engine = FeatureEngine(feature_registry)
     execution_order = engine.resolve(requested)
-    definitions = [registry.get(name) for name in execution_order]
+    definitions = [feature_registry.get(name) for name in execution_order]
     feature_frame = engine.calculate(source_frame, requested)
     validate_feature_frame(feature_frame, source_frame, definitions)
     input_ref = {

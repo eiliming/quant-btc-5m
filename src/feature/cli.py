@@ -25,6 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--features", required=True, help="comma-separated registered feature names")
     build.add_argument("--output", required=True, help="feature artifact collection directory")
     build.add_argument("--registry", help="artifact registry path; defaults to <output>/_registry.json")
+    build.add_argument(
+        "--feature-registry",
+        help="Feature Definition YAML; defaults to src/feature/registry/features.yaml",
+    )
     experiment = subparsers.add_parser("experiment", help="run a config-driven feature evaluation")
     experiment.add_argument("--config", required=True)
     experiment.add_argument("--output", required=True)
@@ -58,6 +62,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             features,
             args.output,
             registry_path=args.registry,
+            feature_registry_path=args.feature_registry,
         )
         print(artifact_path)
         return 0

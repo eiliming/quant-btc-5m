@@ -40,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_feature.add_argument("--features", required=True)
     build_feature.add_argument("--output", required=True)
     build_feature.add_argument("--registry")
+    build_feature.add_argument("--feature-registry")
     subparsers.add_parser("build-label", help="Reserved for label artifact builders.")
     subparsers.add_parser("run-experiment", help="Reserved for experiment execution.")
     return parser
@@ -87,6 +88,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     features=feature_names,
                     output_path=Path(args.output),
                     registry_path=Path(args.registry) if args.registry else None,
+                    feature_registry_path=(
+                        Path(args.feature_registry) if args.feature_registry else None
+                    ),
                 )
             )
             exit_code = 0

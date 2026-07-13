@@ -36,6 +36,7 @@ class FeatureBuildConfig:
     features: tuple[str, ...]
     output_path: Path
     registry_path: Path | None = None
+    feature_registry_path: Path | None = None
 
 
 class ResearchPipeline:
@@ -74,6 +75,7 @@ class ResearchPipeline:
             features=list(config.features),
             output_path=config.output_path,
             registry_path=config.registry_path,
+            feature_registry_path=config.feature_registry_path,
         )
         metadata = read_json(artifact_root / METADATA_FILE_NAME)
         if metadata is None:

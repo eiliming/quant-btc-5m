@@ -26,6 +26,10 @@
 | 5.19 | Alpha discovery methodology | Research contract and false-discovery gate implemented |
 | 5.20 | Final architecture review | Complete at Feature Set boundary |
 
+状态口径：`Implemented` 表示仓库中存在代码与自动测试；`Evidence PASS` 表示已有
+正式 Artifact 证据；`Designed/Deferred` 不计入当前工程能力。详细逐环节核查见
+`docs/research/PHASE_5_ENGINEERING_ALIGNMENT_AUDIT.md`。
+
 ## Current Engineering Capability
 
 ```text
@@ -53,6 +57,10 @@ Available Feature set: `return_1`, `body_ratio`, `upper_wick_ratio`, `lower_wick
 - Artifact builder and deterministic QA: `src/feature/dataset/`
 - Unified orchestration: `src/core/pipeline/pipeline.py` and `cli.py`
 - Automated tests: `tests/feature/`
+
+Feature Definition Registry 与 Artifact lineage Registry 已在接口和 CLI 中明确分离：
+前者可由 `--feature-registry` 指定，后者由 `--registry` 指定。实际执行的 Definition
+snapshot 始终固化进 Feature Dataset metadata。
 
 Automated synthetic end-to-end tests cover immutable version creation, metadata, dependency lineage and Registry lookup. The real BTCUSDT 5m Smoke Test generated `feature_dataset_v2` from 341,856 Research Dataset rows and passed full-series formula, timestamp, metadata, immutability and lineage checks. Evidence is recorded in `docs/research/PHASE_5_9_7_FEATURE_FRAMEWORK_REVIEW.md`.
 

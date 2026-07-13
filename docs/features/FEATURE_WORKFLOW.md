@@ -12,6 +12,7 @@ Market Observation
   -> Deterministic QA
   -> Label/Split Experiment
   -> Validated
+  -> Model OS / Backtest evidence (outside Phase 5)
   -> Approved or Rejected
   -> Deprecated
   -> Archived
@@ -24,10 +25,12 @@ Market Observation
 状态提升至少需要：
 
 - `experimental -> validated`：定义冻结、确定性 QA 通过、无已知未来信息、初步实验有结构化记录
-- `validated -> approved`：跨时间切分稳定性、增量信息价值和交易意义经过正式 Experiment/Evaluation
+- `validated -> approved`：Phase 5 不执行此迁移；必须由后续阶段同时提供模型增量贡献和成本后交易意义证据
 - `approved -> deprecated`：新证据表明失效、风险变化或已有替代版本
 
 任何状态变化都必须新增研究记录；Feature Artifact 和历史 Experiment 不得删除或覆盖。
+Registry 中的声明状态是定义快照，当前研究状态从 immutable `feature_review_vN`
+历史投影，不回写 YAML，也不修改旧 Artifact。
 
 ## Change Rules
 

@@ -12,7 +12,9 @@ V1 负责：
 - 执行确定性数据质量校验
 - 写入不可变、版本化、可追溯的 Artifact
 
-V1 不负责 Label、Feature 有效性判断、Feature Selection、模型训练或交易决策。
+本契约中的 Framework V1 仅负责 Feature Dataset 构建，不在 Builder 内判断
+Feature 有效性。Phase 5 的外围研究层另行负责 Label/Split 消费、Experiment、
+Selection Decision、Feature Set 和 Review；模型训练与交易决策仍不属于 Phase 5。
 
 ## Module Boundaries
 
@@ -22,6 +24,9 @@ src/feature/calculator   解析与执行，不执行 IO
 src/feature/features     纯函数 Calculator
 src/feature/dataset      输入校验、QA、Artifact 构建
 src/feature/metadata     Feature metadata 扩展
+src/feature/experiment   只读消费 Feature/Label/Split 的单变量评估
+src/feature/selection    筛选证据与 Feature Set 构建
+src/feature/lifecycle    immutable Review 与状态投影
 src/feature/cli.py       独立 CLI
 src/core/pipeline        Research OS 统一编排入口
 ```
@@ -44,6 +49,7 @@ Builder 必须验证：
 - `artifact_type == research_dataset`
 - `content_hash` 和 `run_id` 存在
 - Research Dataset identity、schema、时间戳连续性和 OHLCV 合法
+- Feature Definition 必填字段、字段闭包、参数/依赖类型、单一 output owner
 
 Feature Framework 只读输入，不得写入 `raw` 或 `research` collection。
 
@@ -75,6 +81,15 @@ feature_dataset_vN/
 - `_registry.json`：上游、下游、lineage 和 impact 查询索引
 
 Feature Artifact 的正式依赖必须是结构化 Research Artifact 引用，路径只能出现在 Registry record 或 config 中。
+
+Feature Definition Registry 与 Artifact Registry 是两个不同概念：
+
+- Feature Definition Registry：默认 `src/feature/registry/features.yaml`，定义 Feature 语义与计算契约；
+- Artifact Registry：默认 collection 下 `_registry.json`，索引 Artifact lineage。
+
+CLI 分别使用 `--feature-registry` 与 `--registry`。Builder 会把实际解析后的完整
+Feature Definition snapshot 写入 metadata config，因此历史 Artifact 不依赖 YAML 的
+当前内容来解释。
 
 ## CLI
 

@@ -125,6 +125,34 @@ def test_circular_dependency_is_rejected(tmp_path: Path) -> None:
         engine.resolve(["a"])
 
 
+@pytest.mark.parametrize(
+    ("fragment", "message"),
+    [
+        ("    unknown_field: value\n", "unknown fields"),
+        ("    dependencies: [return_1, return_1]\n", "must not contain duplicates"),
+        ("    parameters: []\n", "parameters must be a mapping"),
+    ],
+)
+def test_registry_rejects_ambiguous_definition_contracts(
+    tmp_path: Path, fragment: str, message: str
+) -> None:
+    registry_file = tmp_path / "features.yaml"
+    registry_file.write_text(_single_feature_yaml(fragment), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        FeatureRegistry(registry_file)
+
+
+def test_registry_rejects_duplicate_output_ownership(tmp_path: Path) -> None:
+    registry_file = tmp_path / "features.yaml"
+    first = _single_feature_yaml("")
+    second = first.replace("features:\n", "", 1).replace("  custom_return:", "  duplicate_return:", 1)
+    registry_file.write_text(first + second, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="exactly one owner"):
+        FeatureRegistry(registry_file)
+
+
 def test_dataset_build_is_versioned_and_traceable(tmp_path: Path) -> None:
     source = _write_research_artifact(tmp_path)
 
@@ -151,6 +179,23 @@ def test_dataset_build_is_versioned_and_traceable(tmp_path: Path) -> None:
     assert [record.artifact_id for record in artifact_registry.get_upstream_artifacts(first.name)] == [
         "research_dataset_v1"
     ]
+
+
+def test_builder_uses_explicit_feature_definition_registry(tmp_path: Path) -> None:
+    source = _write_research_artifact(tmp_path)
+    registry_file = tmp_path / "feature_definitions.yaml"
+    registry_file.write_text(_single_feature_yaml(""), encoding="utf-8")
+
+    artifact = build_feature_dataset(
+        source,
+        ["custom_return"],
+        tmp_path / "features",
+        feature_registry_path=registry_file,
+    )
+
+    metadata = json.loads((artifact / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["config"]["requested_features"] == ["custom_return"]
+    assert metadata["features"][0]["feature_id"] == "custom_return:v1"
 
 
 def test_builder_rejects_data_os_output(tmp_path: Path) -> None:
@@ -243,3 +288,24 @@ def _write_research_artifact(root: Path) -> Path:
     )
     manager.write(source, frame, metadata)
     return source
+
+
+def _single_feature_yaml(extra: str) -> str:
+    return (
+        "features:\n"
+        "  custom_return:\n"
+        "    version: v1\n"
+        "    group: price\n"
+        "    calculator: Return1Calculator\n"
+        "    inputs: [close]\n"
+        "    outputs: [return_1]\n"
+        "    description: Custom return definition.\n"
+        "    market_phenomenon: Price movement.\n"
+        "    research_hypothesis: Price movement may contain information.\n"
+        "    calculation_method: close / close.shift(1) - 1\n"
+        "    expected_effect: Signed short-term movement.\n"
+        "    potential_risks: [warm-up null]\n"
+        "    lookback: 1\n"
+        "    status: experimental\n"
+        f"{extra}"
+    )

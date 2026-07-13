@@ -20,9 +20,15 @@
 | `calculator` | 实现类 |
 | `status` | 生命周期状态 |
 
-允许状态：`experimental`、`validated`、`approved`、`deprecated`、`archived`。
+Schema 可表达：`experimental`、`validated`、`approved`、`deprecated`、`archived`。
+但 Phase 5 Review 的最高可达状态是 `validated`；`approved` 仅作为跨阶段保留状态，
+必须等待 Model OS 的增量贡献证据和成本后交易证据，不能由 Phase 5 写入。
 
 Feature Definition 由 `src/feature/registry/features.yaml` 管理；Calculator 修改公式时必须新增 Feature version，禁止静默修改历史定义。
+
+Registry 加载时拒绝未知字段、空值/重复的 inputs、outputs、dependencies、非 mapping
+parameters、自依赖，以及多个 Feature 声明同一个 output。一个输出列只能有一个
+Definition owner，避免 DAG 执行时发生隐式覆盖。
 
 ## Feature Dataset Metadata
 
