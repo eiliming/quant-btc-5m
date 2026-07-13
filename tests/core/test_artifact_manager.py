@@ -84,6 +84,19 @@ class ArtifactManagerTests(unittest.TestCase):
             self.assertEqual(id1, "research_dataset_v1")
             self.assertEqual(id2, "research_dataset_v2")
 
+    def test_selection_decision_type_has_versioned_root_and_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = ArtifactManager(temp_dir)
+            root = manager.root_for("selection_decision", "binance_spot", "BTCUSDT", "5m")
+            self.assertEqual(
+                root,
+                Path(temp_dir) / "feature/selection_decisions/binance_spot/BTCUSDT/5m",
+            )
+            self.assertEqual(
+                manager.generate_artifact_id("selection_decision", target_collection=root),
+                "selection_decision_v1",
+            )
+
     def test_writes_and_resolves_current_pointer_for_versioned_types(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = ArtifactManager(temp_dir)

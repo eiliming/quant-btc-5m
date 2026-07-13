@@ -1,0 +1,15 @@
+research_definition_id: PHASE5_CLOSURE_V1
+research_artifact: artifacts/research/datasets/binance_spot/BTCUSDT/5m/research_dataset_v1
+output_collection: artifacts/label/datasets/binance_spot/BTCUSDT/5m
+target_definition:
+  target_family: forward_return
+  target_name: future_return_1
+  target_type: continuous
+  source_column: close
+  horizon_bars: 1
+  horizon_duration: 5m
+  decision_time: candle_close_t
+  target_available_time: candle_close_t_plus_1
+  formula: close.shift(-1) / close - 1
+  filtering: none
+  threshold: null

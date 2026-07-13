@@ -14,6 +14,9 @@ artifacts/qa/reports/*
 artifacts/qa/summary/*
 artifacts/research/datasets/*
 artifacts/feature/datasets/*
+artifacts/feature/sets/*
+artifacts/feature/selection_decisions/*
+artifacts/feature/reviews/*
 artifacts/label/datasets/*
 artifacts/split/*
 artifacts/experiments/*

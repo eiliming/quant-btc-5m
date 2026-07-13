@@ -60,7 +60,10 @@ Artifact System 使用 DAG 表示全链路依赖：
 ```text
 raw artifact -> QA report artifact -> QA summary artifact
 raw artifact + QA report artifact -> research dataset artifact
-research dataset artifact -> feature/label/split/experiment artifacts
+research dataset artifact -> feature dataset artifact
+research dataset artifact -> label dataset artifact -> split artifact
+feature + label + split artifacts -> feature experiment -> selection decision -> feature set
+experiment + decision + feature set -> feature review
 ```
 
 Registry 是 Artifact System of Record，负责维护：
@@ -80,14 +83,20 @@ Research OS 的概念生命周期是：
 Dataset -> Feature -> Label -> Split -> Experiment -> Evaluation
 ```
 
-当前代码实现了四个基础阶段：
+当前代码在 Phase 5 Research OS 闭环内实现：
 
 1. `build-dataset`: raw kline artifact
 2. `run-qa`: QA report artifact
 3. `build-research`: research dataset artifact
 4. `build-feature`: feature dataset artifact
+5. `LabelBuilder`: label dataset artifact
+6. `SplitBuilder`: chronological split artifact
+7. Feature 子入口的研究实验：消费既有 Feature、Label、Split Artifact
+8. Selection Decision：冻结机器筛选证据
+9. Feature selection：生成版本化 Feature Set Artifact
+10. Feature Review 与只读 lifecycle status projection
 
-Label、Split、Experiment 与 Evaluation 阶段仍待后续实现。
+Training Dataset Builder 与 Model Runner 不属于当前 Phase 5 已实现边界。
 
 当前数据流边界：
 
@@ -99,6 +108,12 @@ Exchange API
   -> Research Dataset Artifact
   -> Feature Registry + Dependency Engine
   -> Feature Dataset Artifact
+  + Label Dataset Artifact
+  + Split Artifact
+  -> Feature Experiment Artifact
+  -> Selection Decision Artifact
+  -> Feature Set Artifact
+  -> Feature Review Artifact
 ```
 
 Loader 只读取 research dataset artifact。QA 不访问交易所 API，Dataset Builder 不绕过 QA，后续 Feature / Label / Experiment 不应直接读取 raw artifact。

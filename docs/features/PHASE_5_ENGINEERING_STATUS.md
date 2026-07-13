@@ -9,11 +9,22 @@
 | 5.3 | Feature Schema and bundle Artifact | Contract frozen for V1 |
 | 5.4 | Registry, Engine, Calculator, Builder pipeline | V1 implemented |
 | 5.5 | Feature QA layers | Designed; deterministic subset implemented |
-| 5.6 | Research lifecycle and approval workflow | Documented; experiment gates pending |
+| 5.6 | Research lifecycle and approval workflow | V1 evidence gates implemented |
 | 5.7 | Engineering architecture | Frozen as `src/feature` |
 | 5.8 | MVP implementation plan | Complete |
 | 5.9.1–5.9.6 | Framework implementation specification | V1 implemented |
 | 5.9.7 | Implementation review | Real BTCUSDT 5m Smoke Test passed |
+| 5.10 | Feature Library expansion governance | V1 implemented |
+| 5.11 | Observation-to-hypothesis research contract | V1 implemented |
+| 5.12 | Config-driven univariate Feature experiments | V1 implemented |
+| 5.13 | Evidence-driven Feature Set selection/versioning | V1 implemented |
+| 5.14 | Temporal and fixed-boundary Regime stability | Evaluation V1 implemented; Regime Features pending |
+| 5.15 | Selection and lifecycle evidence | V1 implemented through Feature Review |
+| 5.16 | Feature experiment platform | Univariate V1 implemented; model A/B deferred |
+| 5.17 | Feature Store and Training integration | Offline snapshot mapped to Feature Dataset; Training integration not implemented |
+| 5.18 | Pipeline engineering | DAG/QA/CLI implemented; incremental/cache deferred |
+| 5.19 | Alpha discovery methodology | Research contract and false-discovery gate implemented |
+| 5.20 | Final architecture review | Complete at Feature Set boundary |
 
 ## Current Engineering Capability
 
@@ -25,6 +36,12 @@ Research Dataset Artifact
   -> Deterministic Feature QA
   -> Immutable Feature Dataset Artifact
   -> Artifact Registry lineage
+  + Label Dataset Artifact
+  + Chronological Split Artifact
+  -> Feature Experiment Artifact
+  -> Selection Decision Artifact
+  -> Feature Set Artifact
+  -> Feature Review Artifact and lifecycle status projection
 ```
 
 Available Feature set: `return_1`, `body_ratio`, `upper_wick_ratio`, `lower_wick_ratio`, `volume_ratio_20`, `volatility_20`.
@@ -39,12 +56,17 @@ Available Feature set: `return_1`, `body_ratio`, `upper_wick_ratio`, `lower_wick
 
 Automated synthetic end-to-end tests cover immutable version creation, metadata, dependency lineage and Registry lookup. The real BTCUSDT 5m Smoke Test generated `feature_dataset_v2` from 341,856 Research Dataset rows and passed full-series formula, timestamp, metadata, immutability and lineage checks. Evidence is recorded in `docs/research/PHASE_5_9_7_FEATURE_FRAMEWORK_REVIEW.md`.
 
+The 5.10–5.13 implementation and its boundaries are specified in
+`PHASE_5_10_5_13_FEATURE_RESEARCH_OS.md`.
+
 ## Not Yet Complete
 
-- Label-aware information value and stability QA
-- Feature approval enforcement in Training Dataset Builder
-- Feature inspect/list/qa lifecycle CLI
-- Baseline Feature Set research experiment
+- Formal real-data closure run and immutable v1 evidence publication
+- Model contribution and cost-aware backtest gates for approved status
+- Training Dataset integration (Model OS boundary)
+- Standalone historical Feature QA command beyond build-time validation
 - Trading-value evaluation
 
-These items belong to the next research loop and must not be reported as completed by Framework V1.
+The formal closure run is the remaining Phase 5 acceptance action. Model contribution,
+Training Dataset integration and trading-value evaluation remain outside the Feature OS
+closure boundary and must not be reported as Phase 5 outputs.

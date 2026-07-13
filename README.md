@@ -20,11 +20,13 @@ Research OS 将研究过程组织为一组可追溯的产物：
 
 ```text
 Dataset Artifact
--> Feature Set Artifact
+-> Feature Dataset Artifact
 -> Label Artifact
 -> Split Artifact
 -> Experiment Artifact
--> Evaluation Result
+-> Selection Decision Artifact
+-> Feature Set Artifact
+-> Feature Review Artifact
 ```
 
 当前已实现：
@@ -34,6 +36,10 @@ Dataset Artifact
 - research dataset build
 - Feature Framework V1（Registry、Calculator、Dependency Engine、Feature Dataset Builder）
 - Feature Dataset 确定性 QA 与 Artifact lineage
+- Feature stability/regime experiment 与多重检验控制
+- Label Dataset 与时间序列 Split Artifact 边界
+- immutable Selection Decision 与 lifecycle status projection
+- Feature Set selection 与 immutable lifecycle review
 - artifact metadata
 - artifact dependency DAG
 - registry lineage lookup
@@ -48,6 +54,8 @@ src/ingestion/  数据获取
 src/validation/ 数据质量检查
 src/transformation/ Research dataset 构建
 src/feature/    Feature 定义、计算与 Artifact 构建
+src/labels/     Label Dataset Artifact 构建
+src/split/      时间序列 Split Artifact 构建
 docs/           架构与设计说明
 tests/          自动化测试
 ```
@@ -61,6 +69,20 @@ python cli.py build-dataset
 python cli.py run-qa
 python cli.py build-research
 python cli.py build-feature
+```
+
+Feature 研究子命令使用独立入口：
+
+```bash
+python -m src.feature.cli list
+python -m src.feature.cli inspect --name return_1
+python -m src.feature.cli experiment --config ... --output ...
+python -m src.feature.cli decide --config ... --output ...
+python -m src.feature.cli select --config ... --output ...
+python -m src.feature.cli review --config ... --output ...
+python -m src.feature.cli status --registry ... --reviews ...
+python -m src.labels.cli build --config ...
+python -m src.split.cli build --config ...
 ```
 
 示例：
@@ -119,6 +141,8 @@ python -m compileall -q src cli.py
 - `docs/features/FEATURE_QA_SPEC.md`: Feature QA 分层与当前实现边界
 - `docs/features/FEATURE_WORKFLOW.md`: Feature 研究生命周期
 - `docs/features/PHASE_5_ENGINEERING_STATUS.md`: Phase 5 设计与工程状态
+- `docs/features/PHASE_5_14_5_19_IMPLEMENTATION.md`: Phase 5.14–5.19 实现边界
+- `docs/research/PHASE_5_FINAL_ALIGNMENT_REVIEW.md`: Phase 5 最终验收与 Phase 6 准入清单
 - `docs/LABEL_DESIGN.md`: Label 概念说明
 - `docs/BACKTEST_PRINCIPLES.md`: 回测与策略原则
 - `docs/MODEL_STRATEGY_BOUNDARY.md`: 模型与策略层边界定义

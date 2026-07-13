@@ -1,0 +1,20 @@
+research_definition_id: PHASE5_CLOSURE_V1
+label_artifact: artifacts/label/datasets/binance_spot/BTCUSDT/5m/label_dataset_v1
+output_collection: artifacts/split/binance_spot/BTCUSDT/5m
+strategy: fixed_time_boundaries
+intervals:
+  train:
+    start: "2023-04-01T00:00:00Z"
+    end_exclusive: "2025-01-01T00:00:00Z"
+  validation:
+    start: "2025-01-01T00:00:00Z"
+    end_exclusive: "2026-01-01T00:00:00Z"
+  test:
+    start: "2026-01-01T00:00:00Z"
+    end_exclusive: "2026-07-01T00:00:00Z"
+purge_policy:
+  type: horizon_based
+  bars: 1
+embargo_policy:
+  type: none
+  bars: 0

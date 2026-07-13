@@ -1,0 +1,3 @@
+feature_artifact: artifacts/feature/datasets/binance_spot/BTCUSDT/5m/feature_dataset_v2
+experiment_artifact: artifacts/experiments/binance_spot/BTCUSDT/5m/experiment_v1
+selection_decision_artifact: artifacts/feature/selection_decisions/binance_spot/BTCUSDT/5m/selection_decision_v1

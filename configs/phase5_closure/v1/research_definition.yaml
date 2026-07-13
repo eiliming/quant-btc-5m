@@ -1,0 +1,49 @@
+research_definition_id: PHASE5_CLOSURE_V1
+purpose: pipeline_validation_experiment
+market:
+  exchange: binance_spot
+  symbol: BTCUSDT
+  timeframe: 5m
+hypothesis:
+  hypothesis_id: HYP_BASE_FEATURE_INFORMATION_001
+  experiment_family_id: FAM_BTCUSDT_5M_BASE_FEATURES_V1
+  statement: >-
+    At least one registered V1 base feature has stable rank association
+    with the next BTCUSDT 5m return.
+candidate_features:
+  - name: return_1
+    feature_id: return_1:v1
+  - name: body_ratio
+    feature_id: body_ratio:v1
+  - name: upper_wick_ratio
+    feature_id: upper_wick_ratio:v1
+  - name: lower_wick_ratio
+    feature_id: lower_wick_ratio:v1
+  - name: volume_ratio_20
+    feature_id: volume_ratio_20:v1
+  - name: volatility_20
+    feature_id: volatility_20:v1
+evaluation_splits:
+  - train
+  - validation
+multiple_testing:
+  method: benjamini_hochberg
+  correction_scope: features_within_each_split_and_segment
+search_budget:
+  max_experiments: 1
+  experiment_index: 1
+  tested_feature_count: 6
+selection_gates:
+  evaluation_split: validation
+  minimum_abs_spearman_ic: 0.01
+  maximum_missing_rate: 0.001
+  maximum_abs_correlation: 0.90
+  q_value_threshold: 0.05
+  require_train_validation_sign_consistency: true
+  minimum_valid_quarters: 2
+  feature_budget: 4
+failure_criteria:
+  - no_feature_passes_predeclared_gates
+  - artifact_alignment_failure
+  - experiment_not_reproducible
+  - test_split_used_for_selection

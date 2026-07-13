@@ -1,0 +1,64 @@
+objective: >-
+  Validate the real Feature, Label, Split, Experiment, and governance boundaries
+  for the six BTCUSDT 5m V1 base Features.
+experiment_purpose: pipeline_validation
+experiment_family_id: FAM_BTCUSDT_5M_BASE_FEATURES_V1
+experiment_index: 1
+search_budget:
+  max_experiments: 1
+hypothesis_id: HYP_BASE_FEATURE_INFORMATION_001
+hypothesis: >-
+  At least one registered V1 base feature has stable rank association
+  with the next BTCUSDT 5m return.
+feature_artifact: artifacts/feature/datasets/binance_spot/BTCUSDT/5m/feature_dataset_v2
+label_artifact: artifacts/label/datasets/binance_spot/BTCUSDT/5m/label_dataset_v1
+split_artifact: artifacts/split/binance_spot/BTCUSDT/5m/split_v1
+features:
+  - return_1
+  - body_ratio
+  - upper_wick_ratio
+  - lower_wick_ratio
+  - volume_ratio_20
+  - volatility_20
+feature_identities:
+  return_1: return_1:v1
+  body_ratio: body_ratio:v1
+  upper_wick_ratio: upper_wick_ratio:v1
+  lower_wick_ratio: lower_wick_ratio:v1
+  volume_ratio_20: volume_ratio_20:v1
+  volatility_20: volatility_20:v1
+tested_feature_count: 6
+target_definition:
+  target_family: forward_return
+  target_name: future_return_1
+  target_type: continuous
+  source_column: close
+  horizon_bars: 1
+  horizon_duration: 5m
+  decision_time: candle_close_t
+  target_available_time: candle_close_t_plus_1
+  formula: close.shift(-1) / close - 1
+  filtering: none
+  threshold: null
+label_column: future_return_1
+split_column: split
+evaluation_splits:
+  - train
+  - validation
+multiple_testing_method: benjamini_hochberg
+correction_scope: features_within_each_split_and_segment
+predeclared_selection_gates:
+  evaluation_split: validation
+  minimum_abs_spearman_ic: 0.01
+  maximum_missing_rate: 0.001
+  maximum_abs_correlation: 0.90
+  q_value_threshold: 0.05
+  require_train_validation_sign_consistency: true
+  minimum_valid_quarters: 2
+  feature_budget: 4
+random_seed: 20260713
+minimum_samples: 1000
+temporal_frequency: quarter
+regime_segments: {}
+conclusion: Pending immutable Feature Review.
+next_action: Apply the predeclared selection gate.

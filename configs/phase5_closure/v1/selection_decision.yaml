@@ -1,0 +1,24 @@
+research_definition_id: PHASE5_CLOSURE_V1
+feature_artifact: artifacts/feature/datasets/binance_spot/BTCUSDT/5m/feature_dataset_v2
+experiment_artifact: artifacts/experiments/binance_spot/BTCUSDT/5m/experiment_v1
+split_artifact: artifacts/split/binance_spot/BTCUSDT/5m/split_v1
+hypothesis_id: HYP_BASE_FEATURE_INFORMATION_001
+experiment_family_id: FAM_BTCUSDT_5M_BASE_FEATURES_V1
+experiment_index: 1
+evaluation_split: validation
+candidate_features:
+  - return_1:v1
+  - body_ratio:v1
+  - upper_wick_ratio:v1
+  - lower_wick_ratio:v1
+  - volume_ratio_20:v1
+  - volatility_20:v1
+selection_gates:
+  minimum_abs_spearman_ic: 0.01
+  maximum_missing_rate: 0.001
+  maximum_abs_correlation: 0.90
+  q_value_threshold: 0.05
+  require_train_validation_sign_consistency: true
+  minimum_valid_quarters: 2
+  feature_budget: 4
+reviewer: phase5_closure_researcher

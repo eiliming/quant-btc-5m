@@ -52,4 +52,4 @@
 
 ## Next Step
 
-真实 BTCUSDT 5m Smoke Test 已通过并记录于 `PHASE_5_9_7_FEATURE_FRAMEWORK_REVIEW.md`。下一步进入 Phase 5.10 Feature Library Expansion；新增 Feature 仍需保持 experimental，并在 Label/Split 驱动的正式实验中验证。任何 Feature 状态提升必须基于结构化实验和交易意义评估。
+Phase 5.10–5.20 已形成从 Feature Dataset、Label Dataset、时间切分、稳定性实验、Selection Decision 到 Feature Set 和 Feature Review 的最小 Research OS 闭环。Label/Split 只作为正式 Artifact 边界支撑 Feature 研究；Training Dataset 和 Model Pipeline 仍不纳入本阶段。实现不预造正式研究结果，下一步是在 clean commit 上生成真实 BTCUSDT 5m v1 Artifact 链并执行 Closure Gate。
