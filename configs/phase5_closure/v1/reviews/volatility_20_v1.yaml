@@ -1,0 +1,11 @@
+feature: volatility_20
+feature_id: volatility_20:v1
+decision: retain
+target_status: experimental
+rationale: >-
+  Retained as experimental because the formal Selection Decision rejected it
+  on q-value and minimum absolute validation IC gates.
+reviewer: phase5_closure_researcher
+experiment_artifact: artifacts/experiments/binance_spot/BTCUSDT/5m/experiment_v1
+selection_decision_artifact: artifacts/feature/selection_decisions/binance_spot/BTCUSDT/5m/selection_decision_v1
+feature_set_artifact: artifacts/feature/sets/binance_spot/BTCUSDT/5m/feature_set_v1

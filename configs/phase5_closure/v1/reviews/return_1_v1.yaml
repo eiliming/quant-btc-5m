@@ -1,0 +1,13 @@
+feature: return_1
+feature_id: return_1:v1
+decision: promote
+target_status: validated
+rationale: >-
+  Accepted by the predeclared validation gates with consistent train and
+  validation IC sign, validation absolute Spearman IC above 0.01, and
+  Benjamini-Hochberg q-value below 0.05. Validation is Feature Research
+  evidence only and does not imply model, strategy, or trading approval.
+reviewer: phase5_closure_researcher
+experiment_artifact: artifacts/experiments/binance_spot/BTCUSDT/5m/experiment_v1
+selection_decision_artifact: artifacts/feature/selection_decisions/binance_spot/BTCUSDT/5m/selection_decision_v1
+feature_set_artifact: artifacts/feature/sets/binance_spot/BTCUSDT/5m/feature_set_v1
