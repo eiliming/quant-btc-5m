@@ -1,3 +1,8 @@
-from src.core.pipeline.pipeline import DatasetBuildConfig, ResearchBuildConfig, ResearchPipeline
+from src.core.pipeline.pipeline import (
+    DatasetBuildConfig,
+    FeatureBuildConfig,
+    ResearchBuildConfig,
+    ResearchPipeline,
+)
 
-__all__ = ["DatasetBuildConfig", "ResearchBuildConfig", "ResearchPipeline"]
+__all__ = ["DatasetBuildConfig", "FeatureBuildConfig", "ResearchBuildConfig", "ResearchPipeline"]

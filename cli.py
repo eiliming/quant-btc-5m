@@ -5,7 +5,12 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from src.core.pipeline import DatasetBuildConfig, ResearchBuildConfig, ResearchPipeline
+from src.core.pipeline import (
+    DatasetBuildConfig,
+    FeatureBuildConfig,
+    ResearchBuildConfig,
+    ResearchPipeline,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +35,11 @@ def build_parser() -> argparse.ArgumentParser:
     build_research.add_argument("--timeframe", required=True)
     build_research.add_argument("--artifact-root", default="artifacts")
 
-    subparsers.add_parser("build-feature", help="Reserved for feature artifact builders.")
+    build_feature = subparsers.add_parser("build-feature", help="Build feature dataset artifacts.")
+    build_feature.add_argument("--dataset", required=True)
+    build_feature.add_argument("--features", required=True)
+    build_feature.add_argument("--output", required=True)
+    build_feature.add_argument("--registry")
     subparsers.add_parser("build-label", help="Reserved for label artifact builders.")
     subparsers.add_parser("run-experiment", help="Reserved for experiment execution.")
     return parser
@@ -68,7 +77,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             exit_code = 0
-        elif args.command in {"build-feature", "build-label", "run-experiment"}:
+        elif args.command == "build-feature":
+            feature_names = tuple(
+                name.strip() for name in args.features.split(",") if name.strip()
+            )
+            payload = pipeline.build_feature(
+                FeatureBuildConfig(
+                    dataset_path=Path(args.dataset),
+                    features=feature_names,
+                    output_path=Path(args.output),
+                    registry_path=Path(args.registry) if args.registry else None,
+                )
+            )
+            exit_code = 0
+        elif args.command in {"build-label", "run-experiment"}:
             parser.error(f"{args.command} is reserved but not implemented yet")
         else:
             parser.error(f"unsupported command: {args.command}")

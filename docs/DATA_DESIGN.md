@@ -44,6 +44,7 @@ Artifact 的文件模型由数据文件和 metadata 文件组成。
 ```text
 artifacts/raw/{exchange}/{symbol}/{timeframe}/{artifact_id}/
 artifacts/research/datasets/{exchange}/{symbol}/{timeframe}/{artifact_id}/
+artifacts/feature/datasets/{exchange}/{symbol}/{timeframe}/{artifact_id}/
 artifacts/qa/reports/{exchange}/{symbol}/{timeframe}/YYYY/MM/{artifact_id}/
 ```
 
@@ -82,3 +83,16 @@ metadata.json
 - 版本由 `_current.json` pointer 管理，每个 collection 目录下一个。
 
 详细数据结构说明见 `docs/data/DATA_CONTRACT.md`。
+
+Feature collection 使用相同版本模型：
+
+```text
+artifacts/feature/datasets/{exchange}/{symbol}/{timeframe}/
+  _current.json
+  _registry.json
+  feature_dataset_v1/
+    data.parquet
+    metadata.json
+```
+
+`_current.json` 是可变指针，`_registry.json` 是可重建的依赖索引；二者不是研究结果 Artifact。具体契约见 `docs/features/FEATURE_CONTRACT.md`。

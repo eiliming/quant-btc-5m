@@ -80,13 +80,14 @@ Research OS 的概念生命周期是：
 Dataset -> Feature -> Label -> Split -> Experiment -> Evaluation
 ```
 
-当前代码实现了前三个基础阶段：
+当前代码实现了四个基础阶段：
 
 1. `build-dataset`: raw kline artifact
 2. `run-qa`: QA report artifact
 3. `build-research`: research dataset artifact
+4. `build-feature`: feature dataset artifact
 
-后续阶段可在同一 Artifact 模型下继续扩展。
+Label、Split、Experiment 与 Evaluation 阶段仍待后续实现。
 
 当前数据流边界：
 
@@ -96,10 +97,15 @@ Exchange API
   -> Raw Artifact
   -> QA Artifact
   -> Research Dataset Artifact
-  -> Loader
+  -> Feature Registry + Dependency Engine
+  -> Feature Dataset Artifact
 ```
 
 Loader 只读取 research dataset artifact。QA 不访问交易所 API，Dataset Builder 不绕过 QA，后续 Feature / Label / Experiment 不应直接读取 raw artifact。
+
+Feature Builder 只接受包含完整标准 metadata 的 `research_dataset` Artifact，输出到独立的 `feature/datasets` collection。Calculator 不执行 IO，Engine 不写 Artifact，Builder 不定义计算公式。
+
+Feature 设计和当前工程状态见 `docs/features/`。
 
 ## Builder vs Artifact
 

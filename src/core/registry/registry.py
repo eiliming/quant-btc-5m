@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.core.artifact.artifact_io import read_json, write_json_immutable
+from src.core.artifact.artifact_io import read_json, write_json_mutable
 from src.core.registry.artifact_graph import ArtifactGraph
 
 
@@ -75,7 +75,7 @@ class ArtifactRegistry:
             "dependency_index": self.dependency_index(),
             "reverse_dependency_index": self.reverse_dependency_index(),
         }
-        write_json_immutable(self.registry_path, payload)
+        write_json_mutable(self.registry_path, payload)
 
     def dependency_index(self) -> dict[str, list[str]]:
         return self._graph.dependency_index()
@@ -84,16 +84,33 @@ class ArtifactRegistry:
         return self._graph.reverse_dependency_index()
 
     def get_upstream_artifacts(self, artifact_id: str) -> list[RegistryRecord]:
-        return [self.get(dependency_id) for dependency_id in self._graph.get_upstream_artifacts(artifact_id)]
+        return self._known_records(self._graph.get_upstream_artifacts(artifact_id))
 
     def get_downstream_artifacts(self, artifact_id: str) -> list[RegistryRecord]:
-        return [self.get(dependent_id) for dependent_id in self._graph.get_downstream_artifacts(artifact_id)]
+        return self._known_records(self._graph.get_downstream_artifacts(artifact_id))
 
     def trace_lineage(self, artifact_id: str) -> list[RegistryRecord]:
-        return [self.get(dependency_id) for dependency_id in self._graph.trace_upstream(artifact_id)]
+        return self._known_records(self._graph.trace_upstream(artifact_id))
 
     def trace_impact(self, artifact_id: str) -> list[RegistryRecord]:
-        return [self.get(dependent_id) for dependent_id in self._graph.trace_downstream(artifact_id)]
+        return self._known_records(self._graph.trace_downstream(artifact_id))
+
+    def unresolved_upstream_ids(self, artifact_id: str, *, transitive: bool = True) -> list[str]:
+        """Return referenced upstream IDs that have no record in this registry.
+
+        Collection-local registries may intentionally stop at an upstream
+        Artifact boundary. The dependency graph retains those references while
+        record-based lineage queries return every locally resolvable Artifact.
+        """
+        artifact_ids = (
+            self._graph.trace_upstream(artifact_id)
+            if transitive
+            else self._graph.get_upstream_artifacts(artifact_id)
+        )
+        return sorted(value for value in artifact_ids if value not in self._records)
+
+    def _known_records(self, artifact_ids: list[str]) -> list[RegistryRecord]:
+        return [self._records[value] for value in artifact_ids if value in self._records]
 
 
 def _metadata_inputs(metadata: dict[str, Any]) -> list[dict[str, Any]]:

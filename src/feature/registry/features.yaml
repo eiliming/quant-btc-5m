@@ -1,0 +1,104 @@
+features:
+  return_1:
+    version: v1
+    group: price
+    calculator: Return1Calculator
+    inputs: [close]
+    outputs: [return_1]
+    dependencies: []
+    parameters: {}
+    description: One-period simple close-to-close return.
+    market_phenomenon: Short-horizon price direction and movement magnitude.
+    research_hypothesis: Recent price movement is a necessary atomic observation for momentum and volatility research.
+    calculation_method: close / close.shift(1) - 1
+    expected_effect: Provides a signed, scale-free description of the latest price move.
+    potential_risks: [first-row warm-up null, sensitivity to bad close prices]
+    lookback: 1
+    status: experimental
+
+  body_ratio:
+    version: v1
+    group: candle
+    calculator: BodyRatioCalculator
+    inputs: [open, high, low, close]
+    outputs: [body_ratio]
+    dependencies: []
+    parameters: {}
+    description: Absolute candle body as a fraction of the full candle range.
+    market_phenomenon: Intrabar directional conviction relative to total price exploration.
+    research_hypothesis: Larger bodies indicate stronger directional control within the candle.
+    calculation_method: abs(close - open) / (high - low), with zero for zero-range candles
+    expected_effect: Separates directional candles from wick-dominated candles.
+    potential_risks: [zero-range candles, exchange price anomalies]
+    lookback: 0
+    status: experimental
+
+  upper_wick_ratio:
+    version: v1
+    group: candle
+    calculator: WickRatioCalculator
+    inputs: [open, high, low, close]
+    outputs: [upper_wick_ratio]
+    dependencies: []
+    parameters: {}
+    description: Upper wick as a fraction of the full candle range.
+    market_phenomenon: Rejection of higher intrabar prices.
+    research_hypothesis: A larger upper wick can represent weakening buyer control or seller absorption.
+    calculation_method: (high - max(open, close)) / (high - low), with zero for zero-range candles
+    expected_effect: Measures the continuous strength of upper-price rejection.
+    potential_risks: [context-dependent interpretation, zero-range candles]
+    lookback: 0
+    status: experimental
+
+  lower_wick_ratio:
+    version: v1
+    group: candle
+    calculator: WickRatioCalculator
+    inputs: [open, high, low, close]
+    outputs: [lower_wick_ratio]
+    dependencies: []
+    parameters: {}
+    description: Lower wick as a fraction of the full candle range.
+    market_phenomenon: Rejection of lower intrabar prices.
+    research_hypothesis: A larger lower wick can represent seller exhaustion or buyer absorption.
+    calculation_method: (min(open, close) - low) / (high - low), with zero for zero-range candles
+    expected_effect: Measures the continuous strength of lower-price rejection.
+    potential_risks: [context-dependent interpretation, zero-range candles]
+    lookback: 0
+    status: experimental
+
+  volume_ratio_20:
+    version: v1
+    group: volume
+    calculator: VolumeRatio20Calculator
+    inputs: [volume]
+    outputs: [volume_ratio_20]
+    dependencies: []
+    parameters:
+      window: 20
+    description: Current volume relative to its trailing 20-candle mean.
+    market_phenomenon: Abnormal market participation and volume expansion.
+    research_hypothesis: Relative volume distinguishes ordinary price moves from participation-confirmed moves.
+    calculation_method: volume / rolling_mean(volume, 20)
+    expected_effect: Values above one identify above-normal current participation.
+    potential_risks: [warm-up nulls, distorted ratios after zero-volume periods]
+    lookback: 20
+    status: experimental
+
+  volatility_20:
+    version: v1
+    group: volatility
+    calculator: Volatility20Calculator
+    inputs: [return_1]
+    outputs: [volatility_20]
+    dependencies: [return_1]
+    parameters:
+      window: 20
+    description: Trailing 20-candle standard deviation of one-period returns.
+    market_phenomenon: Short-horizon volatility level.
+    research_hypothesis: Volatility context changes the interpretation and risk of price-action signals.
+    calculation_method: rolling_std(return_1, 20)
+    expected_effect: Higher values identify more variable short-horizon price movement.
+    potential_risks: [warm-up nulls, sensitivity to return outliers]
+    lookback: 20
+    status: experimental

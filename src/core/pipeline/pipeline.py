@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from src.ingestion.downloader.downloader import download_klines
+from src.core.artifact.artifact_io import METADATA_FILE_NAME, read_json
+from src.feature.dataset.builder import build_feature_dataset
 from src.validation.qa.validator import run_all
 from src.transformation.research_dataset.builder import build_dataset
 
@@ -26,6 +28,14 @@ class ResearchBuildConfig:
     symbol: str
     timeframe: str
     artifact_root: Path = Path("artifacts")
+
+
+@dataclass(frozen=True)
+class FeatureBuildConfig:
+    dataset_path: Path
+    features: tuple[str, ...]
+    output_path: Path
+    registry_path: Path | None = None
 
 
 class ResearchPipeline:
@@ -58,8 +68,17 @@ class ResearchPipeline:
         )
         return metadata.to_dict()
 
-    def build_feature(self) -> None:
-        raise NotImplementedError("Feature builders are registered after dataset artifacts exist.")
+    def build_feature(self, config: FeatureBuildConfig) -> dict[str, Any]:
+        artifact_root = build_feature_dataset(
+            dataset_path=config.dataset_path,
+            features=list(config.features),
+            output_path=config.output_path,
+            registry_path=config.registry_path,
+        )
+        metadata = read_json(artifact_root / METADATA_FILE_NAME)
+        if metadata is None:
+            raise ValueError(f"feature artifact metadata was not written: {artifact_root}")
+        return metadata
 
     def build_label(self) -> None:
         raise NotImplementedError("Label builders are registered after feature artifacts exist.")

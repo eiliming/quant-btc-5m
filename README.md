@@ -32,6 +32,8 @@ Dataset Artifact
 - raw market data ingestion
 - raw data QA
 - research dataset build
+- Feature Framework V1（Registry、Calculator、Dependency Engine、Feature Dataset Builder）
+- Feature Dataset 确定性 QA 与 Artifact lineage
 - artifact metadata
 - artifact dependency DAG
 - registry lineage lookup
@@ -45,6 +47,7 @@ src/core/       Artifact、Registry、Pipeline 基础层
 src/ingestion/  数据获取
 src/validation/ 数据质量检查
 src/transformation/ Research dataset 构建
+src/feature/    Feature 定义、计算与 Artifact 构建
 docs/           架构与设计说明
 tests/          自动化测试
 ```
@@ -57,6 +60,7 @@ tests/          自动化测试
 python cli.py build-dataset
 python cli.py run-qa
 python cli.py build-research
+python cli.py build-feature
 ```
 
 示例：
@@ -81,6 +85,13 @@ python cli.py build-research \
   --timeframe 5m
 ```
 
+```bash
+python cli.py build-feature \
+  --dataset artifacts/research/datasets/binance_spot/BTCUSDT/5m/research_dataset_v1 \
+  --features return_1,body_ratio,volume_ratio_20,volatility_20 \
+  --output artifacts/feature/datasets/binance_spot/BTCUSDT/5m
+```
+
 ## 开发验证
 
 运行测试：
@@ -103,6 +114,11 @@ python -m compileall -q src cli.py
 - `docs/DATA_DESIGN.md`: Artifact 存储设计说明
 - `docs/data/DATA_CONTRACT.md`: Dataset Artifact 结构说明
 - `docs/FEATURE_PRINCIPLES.md`: Feature Set 概念说明
+- `docs/features/FEATURE_CONTRACT.md`: Feature Framework 与 Artifact 正式契约
+- `docs/features/FEATURE_SCHEMA.md`: Feature Definition 与首批 Feature Schema
+- `docs/features/FEATURE_QA_SPEC.md`: Feature QA 分层与当前实现边界
+- `docs/features/FEATURE_WORKFLOW.md`: Feature 研究生命周期
+- `docs/features/PHASE_5_ENGINEERING_STATUS.md`: Phase 5 设计与工程状态
 - `docs/LABEL_DESIGN.md`: Label 概念说明
 - `docs/BACKTEST_PRINCIPLES.md`: 回测与策略原则
 - `docs/MODEL_STRATEGY_BOUNDARY.md`: 模型与策略层边界定义
