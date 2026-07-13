@@ -59,14 +59,24 @@ Automated synthetic end-to-end tests cover immutable version creation, metadata,
 The 5.10–5.13 implementation and its boundaries are specified in
 `PHASE_5_10_5_13_FEATURE_RESEARCH_OS.md`.
 
-## Not Yet Complete
+## Formal Closure Evidence
 
-- Formal real-data closure run and immutable v1 evidence publication
+- `label_dataset_v1` -> `split_v1` -> `experiment_v1` ->
+  `selection_decision_v1` -> `feature_set_v1` -> `feature_review_v1..v6`
+- Engineering Closure: PASS
+- Research Acceptance: PASS
+- Selected Feature: `return_1:v1`
+- Full evidence: `docs/research/PHASE_5_CLOSURE_READINESS_AUDIT.md`
+
+## Outside Closure or Non-blocking
+
 - Model contribution and cost-aware backtest gates for approved status
 - Training Dataset integration (Model OS boundary)
 - Standalone historical Feature QA command beyond build-time validation
+- Generic automated leakage detection and versioned distribution anomaly baselines
+- Formal trend/range and high/low-volatility regime evidence
 - Trading-value evaluation
 
-The formal closure run is the remaining Phase 5 acceptance action. Model contribution,
+These items do not block the completed Feature Research loop. Model contribution,
 Training Dataset integration and trading-value evaluation remain outside the Feature OS
 closure boundary and must not be reported as Phase 5 outputs.

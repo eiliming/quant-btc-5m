@@ -52,4 +52,4 @@
 
 ## Next Step
 
-Phase 5.10–5.20 已形成从 Feature Dataset、Label Dataset、时间切分、稳定性实验、Selection Decision 到 Feature Set 和 Feature Review 的最小 Research OS 闭环。Label/Split 只作为正式 Artifact 边界支撑 Feature 研究；Training Dataset 和 Model Pipeline 仍不纳入本阶段。实现不预造正式研究结果，下一步是在 clean commit 上生成真实 BTCUSDT 5m v1 Artifact 链并执行 Closure Gate。
+Phase 5.10–5.20 的真实 BTCUSDT 5m Research OS 闭环已在 clean commit 上完成。正式链路生成 `label_dataset_v1`、`split_v1`、`experiment_v1`、`selection_decision_v1`、`feature_set_v1` 和 `feature_review_v1..v6`；Engineering Closure 与 Research Acceptance 均为 PASS。`return_1:v1` 获得 `validated` 研究状态，其他五个 Feature 保持 `experimental`。下一阶段可以消费这些冻结 Artifact 进入 Model OS；Phase 5 不扩展到 Training Dataset、模型、策略或部署。

@@ -143,6 +143,7 @@ python -m compileall -q src cli.py
 - `docs/features/PHASE_5_ENGINEERING_STATUS.md`: Phase 5 设计与工程状态
 - `docs/features/PHASE_5_14_5_19_IMPLEMENTATION.md`: Phase 5.14–5.19 实现边界
 - `docs/research/PHASE_5_FINAL_ALIGNMENT_REVIEW.md`: Phase 5 最终验收与 Phase 6 准入清单
+- `docs/research/PHASE_5_CLOSURE_READINESS_AUDIT.md`: 正式 v1 闭环证据与最终准入结论
 - `docs/LABEL_DESIGN.md`: Label 概念说明
 - `docs/BACKTEST_PRINCIPLES.md`: 回测与策略原则
 - `docs/MODEL_STRATEGY_BOUNDARY.md`: 模型与策略层边界定义
