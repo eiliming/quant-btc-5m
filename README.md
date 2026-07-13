@@ -36,7 +36,6 @@ Dataset Artifact
 - artifact dependency DAG
 - registry lineage lookup
 - unified CLI entry
-- Feature Core definition、lifecycle registry 与只读 inspection CLI（Phase 5.9.1）
 
 ## 目录概览
 
@@ -58,8 +57,6 @@ tests/          自动化测试
 python cli.py build-dataset
 python cli.py run-qa
 python cli.py build-research
-python -m src.features.cli registry-check
-python -m src.features.cli list
 ```
 
 示例：
@@ -106,7 +103,6 @@ python -m compileall -q src cli.py
 - `docs/DATA_DESIGN.md`: Artifact 存储设计说明
 - `docs/data/DATA_CONTRACT.md`: Dataset Artifact 结构说明
 - `docs/FEATURE_PRINCIPLES.md`: Feature Set 概念说明
-- `docs/features/FEATURE_CORE_CONTRACT.md`: Feature Core 定义、Registry 与 metadata 契约
 - `docs/LABEL_DESIGN.md`: Label 概念说明
 - `docs/BACKTEST_PRINCIPLES.md`: 回测与策略原则
 - `docs/MODEL_STRATEGY_BOUNDARY.md`: 模型与策略层边界定义
